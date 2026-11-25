@@ -50,12 +50,17 @@ final class HomeView: UIView {
 
         let title = UILabel()
         title.text = "SUBIN V"
-        title.font = Theme.display(20, .black)
+        title.font = Theme.display(19, .black)
         title.textColor = Theme.text
 
         let badge = PaddedBadge(text: "METAL AOT · \(Theme.appVersion)", accent: Theme.accent)
-        let brandRow = UIStackView(arrangedSubviews: [icon, title, badge])
-        brandRow.spacing = 8
+        let titleStack = UIStackView(arrangedSubviews: [title, badge])
+        titleStack.axis = .vertical
+        titleStack.spacing = 2
+        titleStack.alignment = .leading
+
+        let brandRow = UIStackView(arrangedSubviews: [icon, titleStack])
+        brandRow.spacing = 9
         brandRow.alignment = .center
 
         let topBar = UIStackView(arrangedSubviews: [brandRow, UIView(), languageButton])
@@ -68,7 +73,7 @@ final class HomeView: UIView {
         // Left launch column: Files -> Mode -> Description -> Play -> Telemetry
         buildFilesCard()
         for (index, mode) in modes.enumerated() {
-            let card = ModeCard(title: mode.title, symbol: mode.symbol)
+            let card = ModeCard(title: L10n.text(mode.title), symbol: mode.symbol)
             card.addAction(UIAction { [weak self] _ in self?.onMode?(index) }, for: .touchUpInside)
             modeCards.append(card)
         }

@@ -1938,5 +1938,49 @@
   "Ứng dụng thiếu danh sách dữ liệu game. Vui lòng cài lại bản IPA đầy đủ.": {
     "vi": "Ứng dụng thiếu danh sách dữ liệu game. Vui lòng cài lại bản IPA đầy đủ.",
     "en": "The app is missing its game file manifest. Please reinstall the complete IPA."
+  },
+  "Menu Cheat": {
+    "vi": "Menu Cheat",
+    "en": "Cheat Menu"
+  },
+  "Trainer & Gọi xe": {
+    "vi": "Trainer & Gọi xe",
+    "en": "Trainer & Spawner"
+  },
+  "DLC .rpf & Xe mod": {
+    "vi": "DLC .rpf & Xe mod",
+    "en": "DLC .rpf & Add-ons"
+  },
+  "Metal · 120 FPS · RAM": {
+    "vi": "Metal · 120 FPS · RAM",
+    "en": "Metal · 120 FPS · RAM"
+  },
+  "Bố trí nút": {
+    "vi": "Bố trí nút",
+    "en": "Touch Layout"
+  },
+  "Cảm ứng & Gyro": {
+    "vi": "Cảm ứng & Gyro",
+    "en": "Touch & Gyro"
+  },
+  "Máy chủ Online": {
+    "vi": "Máy chủ Online",
+    "en": "Online Server"
+  },
+  "UDP · Voice 3D": {
+    "vi": "UDP · Voice 3D",
+    "en": "UDP · 3D Voice"
+  },
+  "Sao lưu & Khôi phục": {
+    "vi": "Sao lưu & Khôi phục",
+    "en": "Backup & Restore"
+  },
+  "Cài đặt SUBIN V": {
+    "vi": "Cài đặt SUBIN V",
+    "en": "SUBIN V Settings"
+  },
+  "Điều khiển: cảm ứng": {
+    "vi": "Điều khiển: cảm ứng",
+    "en": "Controls: Touch"
   }
 }
