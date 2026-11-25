@@ -94,7 +94,10 @@ final class ModManagerViewController: UITableViewController, UIDocumentPickerDel
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "modCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "modCell")
+        cell.accessoryType = .none
+        cell.accessoryView = nil
+        cell.selectionStyle = .default
         cell.backgroundColor = Theme.rowBackground
         cell.textLabel?.textColor = Theme.text
         cell.detailTextLabel?.textColor = Theme.secondaryText

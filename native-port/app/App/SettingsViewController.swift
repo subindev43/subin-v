@@ -132,7 +132,9 @@ final class SettingsViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "subtitle") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "subtitle")
+        cell.accessoryView = nil
+        cell.accessoryType = .none
         cell.selectionStyle = .default
         var content = cell.defaultContentConfiguration()
         content.secondaryTextProperties.color = .secondaryLabel

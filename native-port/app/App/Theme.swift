@@ -147,7 +147,7 @@ enum Theme {
             attributes.font = display(18, .heavy)
             return attributes
         }
-        let button = UIButton(configuration: config)
+        let button = NeonGlowButton(configuration: config)
         button.configurationUpdateHandler = { button in
             button.configuration?.background.backgroundColor = button.isEnabled
                 ? (button.isHighlighted ? accentDeep : accent)
@@ -155,10 +155,11 @@ enum Theme {
             button.configuration?.baseForegroundColor = button.isEnabled
                 ? UIColor(red: 0.015, green: 0.075, blue: 0.10, alpha: 1)
                 : UIColor(white: 1, alpha: 0.55)
+            springPress(button, pressed: button.isHighlighted && button.isEnabled)
         }
         button.layer.shadowColor = accent.cgColor
         button.layer.shadowOpacity = 0.45
-        button.layer.shadowRadius = 18
+        button.layer.shadowRadius = 16
         button.layer.shadowOffset = .zero
         return button
     }
@@ -182,7 +183,8 @@ enum Theme {
         }
         let button = UIButton(configuration: config)
         button.configurationUpdateHandler = { button in
-            button.alpha = button.isHighlighted ? 0.72 : (button.isEnabled ? 1.0 : 0.45)
+            button.alpha = button.isEnabled ? (button.isHighlighted ? 0.82 : 1.0) : 0.45
+            springPress(button, pressed: button.isHighlighted && button.isEnabled)
         }
         return button
     }
@@ -218,9 +220,29 @@ enum Theme {
         let button = UIButton(configuration: config)
         button.contentHorizontalAlignment = .leading
         button.configurationUpdateHandler = { b in
-            b.alpha = b.isHighlighted ? 0.72 : (b.isEnabled ? 1.0 : 0.45)
+            b.alpha = b.isEnabled ? (b.isHighlighted ? 0.86 : 1.0) : 0.45
+            springPress(b, pressed: b.isHighlighted && b.isEnabled)
         }
         return button
+    }
+
+    /// Smooth 120Hz-friendly spring press scale without layout churn.
+    static func springPress(_ view: UIView, pressed: Bool) {
+        let target = pressed ? CGAffineTransform(scaleX: 0.965, y: 0.965) : .identity
+        guard view.transform != target else { return }
+        UIView.animate(withDuration: 0.22, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.4, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            view.transform = target
+        }
+    }
+
+    static func hapticLight() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+    }
+
+    static func hapticMedium() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
     }
 
     /// Styling for navigation bars across modal screens.
@@ -252,4 +274,12 @@ final class GradientView: UIView {
         isUserInteractionEnabled = false
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+}
+
+/// Keeps a cached shadowPath on primary CTA buttons so CoreAnimation avoids offscreen passes.
+private final class NeonGlowButton: UIButton {
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height * 0.5).cgPath
+    }
 }

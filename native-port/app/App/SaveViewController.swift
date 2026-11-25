@@ -42,7 +42,10 @@ final class SaveViewController: UITableViewController, UIDocumentPickerDelegate 
         return L10n.text("Lưu tiến trình bằng điện thoại hoặc điểm lưu trong GTA V. Sau đó sao lưu tại đây. Bản sao nằm trong Tệp › Mugoat › SaveBackups. Khôi phục khi chưa vào game; save hiện có được sao lưu trước khi thay thế.")
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "saveCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "saveCell")
+        cell.accessoryType = .none
+        cell.accessoryView = nil
+        cell.selectionStyle = .default
         cell.backgroundColor = Theme.rowBackground
         cell.textLabel?.textColor = Theme.text
         cell.detailTextLabel?.textColor = Theme.secondaryText

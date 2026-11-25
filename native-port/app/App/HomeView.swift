@@ -276,9 +276,20 @@ final class HomeView: UIView {
         ])
         filesCard.accessibilityTraits = .button
         filesCard.isAccessibilityElement = true
-        filesCard.addAction(UIAction { [weak self] _ in self?.onFiles?() }, for: .touchUpInside)
-        filesCard.addAction(UIAction { [weak self] _ in self?.filesCard.alpha = 0.72 }, for: [.touchDown, .touchDragEnter])
-        filesCard.addAction(UIAction { [weak self] _ in self?.filesCard.alpha = 1 }, for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
+        filesCard.addAction(UIAction { [weak self] _ in
+            Theme.hapticLight()
+            self?.onFiles?()
+        }, for: .touchUpInside)
+        filesCard.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.filesCard.alpha = 0.85
+            Theme.springPress(self.filesCard, pressed: true)
+        }, for: [.touchDown, .touchDragEnter])
+        filesCard.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.filesCard.alpha = 1
+            Theme.springPress(self.filesCard, pressed: false)
+        }, for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
     }
 
     func setFiles(_ state: FilesState, title: String, detail: String) {
@@ -396,15 +407,22 @@ private final class ModeCard: UIControl {
 
     override var isSelected: Bool { didSet { update() } }
     override var isEnabled: Bool { didSet { update() } }
-    override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 0.72 : 1 } }
+    override var isHighlighted: Bool {
+        didSet {
+            alpha = isHighlighted ? 0.86 : 1
+            Theme.springPress(self, pressed: isHighlighted && isEnabled)
+        }
+    }
 
     private func update() {
         let color = isSelected ? Theme.accent : Theme.text
         icon.tintColor = color
         label.textColor = isEnabled ? color : Theme.tertiaryText
-        panel.contentView.backgroundColor = isSelected
-            ? Theme.accent.withAlphaComponent(0.14)
-            : UIColor(red: 0.045, green: 0.070, blue: 0.145, alpha: 0.55)
+        UIView.animate(withDuration: 0.18, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            self.panel.contentView.backgroundColor = self.isSelected
+                ? Theme.accent.withAlphaComponent(0.14)
+                : UIColor(red: 0.045, green: 0.070, blue: 0.145, alpha: 0.55)
+        }
         panel.layer.borderColor = (isSelected ? Theme.accent : Theme.panelStroke).cgColor
         panel.layer.borderWidth = isSelected ? 1.8 : 1
         accessibilityTraits = isSelected ? [.button, .selected] : .button

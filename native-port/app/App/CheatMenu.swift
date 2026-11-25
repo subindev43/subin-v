@@ -212,10 +212,13 @@ struct CheatMenuView: View {
                     .background(NeonPalette.cardElevated)
                     .overlay(Capsule().stroke(NeonPalette.cyan.opacity(0.65), lineWidth: 1))
                     .clipShape(Capsule())
-                    .shadow(color: NeonPalette.cyan.opacity(0.35), radius: 10)
                     .padding(.bottom, 16)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.spring(response: 0.28, dampingFraction: 0.84), value: toastMessage)
+        .animation(.easeOut(duration: 0.18), value: selectedTab)
+        .animation(.easeOut(duration: 0.16), value: selectedCategory)
     }
 
     private var headerBar: some View {
@@ -299,7 +302,10 @@ struct CheatMenuView: View {
             ForEach(CheatMenuTab.allCases) { tab in
                 let active = selectedTab == tab
                 Button {
-                    selectedTab = tab
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                        selectedTab = tab
+                    }
                 } label: {
                     HStack(spacing: 7) {
                         Image(systemName: tab == .cheats ? "sparkles" : "car.2.fill")
@@ -324,7 +330,10 @@ struct CheatMenuView: View {
                         ForEach(categories, id: \.self) { cat in
                             let selected = selectedCategory == cat
                             Button {
-                                selectedCategory = cat
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                withAnimation(.easeOut(duration: 0.16)) {
+                                    selectedCategory = cat
+                                }
                             } label: {
                                 HStack {
                                     Text(cat)
@@ -573,6 +582,7 @@ struct CheatMenuView: View {
     }
 
     private func apply(_ code: String, forcedMode: CheatInputMode? = nil) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         if MugoatOnlineEnabled() {
             withAnimation { toastMessage = "Không thể dùng cheat trong Multiplayer Online!" }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -595,6 +605,7 @@ struct CheatMenuView: View {
     }
 
     private func spawnVehicle(_ model: String) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         if MugoatOnlineEnabled() {
             withAnimation { toastMessage = "Không thể triệu hồi xe bằng cheat trong Online!" }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

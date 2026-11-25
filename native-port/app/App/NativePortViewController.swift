@@ -1219,11 +1219,14 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             view.addSubview(cheatToastLabel)
         }
         view.bringSubviewToFront(cheatToastLabel)
-        UIView.animate(withDuration: 0.2) {
+        cheatToastLabel.transform = CGAffineTransform(scaleX: 0.92, y: 0.92)
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.78, initialSpringVelocity: 0.4, options: .allowUserInteraction) {
             self.cheatToastLabel.alpha = 1
+            self.cheatToastLabel.transform = .identity
         } completion: { _ in
-            UIView.animate(withDuration: 0.3, delay: 2.5, options: .curveEaseOut) {
+            UIView.animate(withDuration: 0.28, delay: 2.3, options: .curveEaseOut) {
                 self.cheatToastLabel.alpha = 0
+                self.cheatToastLabel.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
             }
         }
     }
