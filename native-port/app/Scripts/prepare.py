@@ -95,13 +95,18 @@ if not bcdec.exists():
         extract(package, root / 'Tools')
     (root / 'Tools' / f'bcdec-{commit}').rename(bcdec)
 # The game's shaders, precompiled into the app's Metal library.
-run('python3', 'Scripts/fetch_shader_tool.py')
-shaders = root / 'Build/Inputs/shaders'
-run('python3', 'Scripts/unpack_shaders.py', '--shaders', str((options.mirror / 'b/8b0b5899ed/shaders').resolve()), '--out', str(shaders))
-sdk_args = []
-for sdk in options.sdk or ['iphoneos']:
-    sdk_args += ['--sdk', sdk]
-run('python3', 'Scripts/build_metal_shaders.py', str(shaders), *sdk_args)
+precompiled_lib = root / 'GeneratedResources/shaders-iphoneos.metallib'
+precompiled_refl = root / 'GeneratedResources/shader-reflection.jsonl'
+if (options.sdk is None or options.sdk == ['iphoneos']) and precompiled_lib.is_file() and precompiled_lib.stat().st_size > 0 and precompiled_refl.is_file() and precompiled_refl.stat().st_size > 0:
+    print('Using precompiled Metal shaders in GeneratedResources/')
+else:
+    run('python3', 'Scripts/fetch_shader_tool.py')
+    shaders = root / 'Build/Inputs/shaders'
+    run('python3', 'Scripts/unpack_shaders.py', '--shaders', str((options.mirror / 'b/8b0b5899ed/shaders').resolve()), '--out', str(shaders))
+    sdk_args = []
+    for sdk in options.sdk or ['iphoneos']:
+        sdk_args += ['--sdk', sdk]
+    run('python3', 'Scripts/build_metal_shaders.py', str(shaders), *sdk_args)
 run('xcodegen', 'generate', '--spec', 'project.yml')
 (root / 'Generated/native-prepared-v1.txt').write_text('ios15.0-native-online-v4\n')
 print('Prepared the native boot project. Open PlayGTA5Native.xcodeproj in Xcode.')

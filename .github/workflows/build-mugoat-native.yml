@@ -129,6 +129,12 @@ jobs:
           JOBS: '3'
           PG_REUSE_PREPARED: ${{ steps.native-cache.outputs.cache-hit == 'true' && '1' || '0' }}
         run: |
+          if [ ! -s app/GeneratedResources/shaders-iphoneos.metallib ] || [ ! -s app/GeneratedResources/shader-reflection.jsonl ]; then
+            mkdir -p app/GeneratedResources
+            curl -fsSL -o "$RUNNER_TEMP/mugoat-v2.ipa" 'https://github.com/iOSVNNews/mugoat/releases/download/v2.0/Mugoat.ipa'
+            unzip -j -o "$RUNNER_TEMP/mugoat-v2.ipa" 'Payload/PlayGTA5Native.app/shaders-iphoneos.metallib' 'Payload/PlayGTA5Native.app/shader-reflection.jsonl' -d app/GeneratedResources
+            rm -f "$RUNNER_TEMP/mugoat-v2.ipa"
+          fi
           ./build_ipa.sh --mirror "$RUNNER_TEMP/game-files"
           shasum -a 256 Mugoat-AppleID-Free.ipa Mugoat-Cert-Paid.ipa > SHA256SUMS.txt
           codesign --verify --deep --strict app/Build/IPA-Free/Payload/PlayGTA5Native.app
