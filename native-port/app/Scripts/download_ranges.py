@@ -14,7 +14,10 @@ def download(url, target: Path, expected_sha256=None):
         error = None
         for attempt in range(3):
             try:
-                request = urllib.request.Request(url, headers={'Range': f'bytes={start}-{end}'})
+                request = urllib.request.Request(url, headers={
+                    'Range': f'bytes={start}-{end}',
+                    'User-Agent': 'Mozilla/5.0'
+                })
                 with urllib.request.urlopen(request, timeout=30) as response:
                     if response.status == 200 and start == 0 and total is None:
                         body = response.read()  # raises on truncated Content-Length

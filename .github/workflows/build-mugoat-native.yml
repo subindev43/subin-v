@@ -96,8 +96,15 @@ jobs:
           xcrun clang++ -std=c++20 -fobjc-arc -framework Foundation -framework Metal native-port/app/Tests/fallback_textures.mm -o "$RUNNER_TEMP/mugoat-fallback-tests"
           "$RUNNER_TEMP/mugoat-fallback-tests"
           mkdir -p "$RUNNER_TEMP/game-files/b/8b0b5899ed"
-          MUGUET_WASM_DEST="$RUNNER_TEMP/game-files/b/8b0b5899ed/game.wasm" node native-port/app/Scripts/download-wasm.cjs
-          /usr/bin/python3 native-port/app/Scripts/fetch_game_files.py --server 'https://hml.sinimediata.com.br' --out "$RUNNER_TEMP/game-files"
+          WASM_DEST="$RUNNER_TEMP/game-files/b/8b0b5899ed/game.wasm"
+          WASM_URL="${WASM_URL:-https://github.com/$GITHUB_REPOSITORY/releases/download/engine-8b0b5899ed/game.wasm}"
+          if curl -fsSL -o "$WASM_DEST" "$WASM_URL" && [ "$(shasum -a 256 "$WASM_DEST" | awk '{print $1}')" = "11ca8d2c04c5e843d18ff4aea4899d72c86973c6b031df334e67c446b2ae83e0" ]; then
+            echo "Validated game.wasm from $WASM_URL"
+          else
+            rm -f "$WASM_DEST"
+            MUGUET_WASM_DEST="$WASM_DEST" node native-port/app/Scripts/download-wasm.cjs
+          fi
+          /usr/bin/python3 native-port/app/Scripts/fetch_game_files.py --server 'https://playgta5.com' --out "$RUNNER_TEMP/game-files"
           /usr/bin/python3 native-port/app/Scripts/check_game_files.py --mirror "$RUNNER_TEMP/game-files"
       - name: Install build tools
         run: |
