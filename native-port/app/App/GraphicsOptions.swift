@@ -3,6 +3,25 @@ import Metal
 import UIKit
 import os
 
+enum UpscalerMode: Int, CaseIterable {
+    case off = 0, balanced = 1, ultra = 2
+
+    var title: String {
+        switch self {
+        case .off: return L10n.text("Tắt (Gốc)")
+        case .balanced: return L10n.text("DLSS5 · Cân bằng (CAS)")
+        case .ultra: return L10n.text("DLSS5 · Siêu nét (OLED)")
+        }
+    }
+    var detail: String {
+        switch self {
+        case .off: return L10n.text("Xuất khung hình gốc không qua bộ nâng nét")
+        case .balanced: return L10n.text("Nâng nét cạnh RCAS 1.35× · mượt và giữ pin")
+        case .ultra: return L10n.text("Tái tạo cạnh Native OLED + khử răng cưa + màu phim (iPhone 14 Pro Max+)")
+        }
+    }
+}
+
 /// Graphics presets. The engine reads quality settings once at boot; only the
 /// resolution can change while it runs.
 enum GraphicsPreset: Int, CaseIterable {
@@ -48,18 +67,24 @@ struct DeviceTier {
     let physicalMemoryMB: Int
     let model: String
     let supportsBCTextures: Bool
+    let supportsDLSSUpscaler: Bool
 
     static func probe() -> DeviceTier {
         var info = utsname(); uname(&info)
         let model = withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
         let device = MTLCreateSystemDefaultDevice()
         let supportsBC: Bool
+        let supportsUpscaler: Bool
+        let memMB = Int(ProcessInfo.processInfo.physicalMemory / 1_048_576)
         if #available(iOS 16.4, *) { supportsBC = device?.supportsBCTextureCompression ?? false }
         else { supportsBC = false }
+        if #available(iOS 16.0, *) { supportsUpscaler = (device?.supportsFamily(.apple8) ?? false) && memMB >= 5400 }
+        else { supportsUpscaler = false }
         return DeviceTier(processAllowanceMB: Self.measureProcessAllowanceMB(),
-                          physicalMemoryMB: Int(ProcessInfo.processInfo.physicalMemory / 1_048_576),
+                          physicalMemoryMB: memMB,
                           model: model,
-                          supportsBCTextures: supportsBC)
+                          supportsBCTextures: supportsBC,
+                          supportsDLSSUpscaler: supportsUpscaler)
     }
 
     /// Jetsam limit = memory still available + what the app already uses.
@@ -128,6 +153,14 @@ enum GraphicsConfiguration {
         // Even frame pacing when the cap is below the screen's refresh rate (30 on 60 Hz, 30/60 on 120 Hz).
         let cap = settings.frameRateCap
         PGSetPresentPacing(cap > 0 && cap < UIScreen.main.maximumFramesPerSecond ? 1.0 / Double(cap) : 0)
+        applyUpscaler(settings)
         return "\(preset.title) \(width)×\(height) at \(GameSettings.frameRateTitle(settings.frameRateCap))"
+    }
+
+    static func applyUpscaler(_ settings: GameSettings) {
+        let bounds = UIScreen.main.nativeBounds
+        let nativeW = min(max(Int(max(bounds.width, bounds.height)), 1280), 2880) & ~1
+        let nativeH = min(max(Int(min(bounds.width, bounds.height)), 720), 1440) & ~1
+        PGSetUpscaler(Int32(settings.upscalerMode.rawValue), Int32(nativeW), Int32(nativeH))
     }
 }

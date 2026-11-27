@@ -89,7 +89,7 @@ final class SettingsViewController: UITableViewController {
         switch Section(rawValue: section)! {
         case .cheat: return isOnline ? 1 : 2
         case .mode: return GameMode.allCases.count
-        case .graphics: return settings.tier.allowed.count + 4
+        case .graphics: return settings.tier.allowed.count + 5
         case .controls: return 12
         case .gyro: return (settings.gyroAim == .off ? 1 : 3) + (settings.tiltSteer == .off ? 1 : 2)
         case .files: return fileRows.count
@@ -198,7 +198,7 @@ final class SettingsViewController: UITableViewController {
                     }
                 } else if row == 2 {
                     ramCell(cell, &content)
-                } else {
+                } else if row == 3 {
                     content.text = L10n.text("Frame rate")
                     content.secondaryText = L10n.text("Higher uses more power and heat; 30 FPS is steadiest. Unlocked goes up to 120 on ProMotion iPhones.")
                     let button = UIButton(type: .system)
@@ -208,6 +208,23 @@ final class SettingsViewController: UITableViewController {
                     button.menu = UIMenu(children: [30, 60, 0].map { cap in
                         UIAction(title: GameSettings.frameRateTitle(cap), state: cap == settings.frameRateCap ? .on : .off) { [weak self] _ in
                             self?.settings.frameRateCap = cap; self?.reloadFooters(); self?.tableView.reloadData()
+                        }
+                    })
+                    button.sizeToFit()
+                    cell.accessoryView = button
+                } else {
+                    content.text = L10n.text("DLSS5 Upscaler (Metal AI)")
+                    content.secondaryText = settings.upscalerMode.detail + L10n.text(" · đổi trực tiếp ngay trong game")
+                    let button = UIButton(type: .system)
+                    button.setTitle(settings.upscalerMode.title + " ▾", for: .normal)
+                    button.showsMenuAsPrimaryAction = true
+                    button.accessibilityLabel = L10n.text("DLSS5 Upscaler (Metal AI)")
+                    button.menu = UIMenu(children: UpscalerMode.allCases.map { mode in
+                        UIAction(title: mode.title, state: mode == settings.upscalerMode ? .on : .off) { [weak self] _ in
+                            self?.settings.upscalerMode = mode
+                            self?.resolutionChanged?()
+                            self?.reloadFooters()
+                            self?.tableView.reloadData()
                         }
                     })
                     button.sizeToFit()

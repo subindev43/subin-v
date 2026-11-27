@@ -205,7 +205,7 @@ struct Renderer {
 	id<MTLBuffer> zeroBuffer;
 	std::unordered_map<uint32_t, id<MTLTexture>> dummyTextures;
 	id<MTLSamplerState> dummySampler, dummyCompare;
-	id<MTLRenderPipelineState> blitPipe, capturePipe;
+	id<MTLRenderPipelineState> blitPipe, upscalePipe, capturePipe;
 	id<MTLDepthStencilState> noDepth;
 
 	// game shader objects by program (the first object created for each), for program substitutions
@@ -276,6 +276,15 @@ static void storeResult(uint64_t addr, uint64_t value, uint32_t seq);
 // Frame pacing: with a 30/60 FPS cap below the screen's refresh rate, each frame is held for the same
 // number of refreshes instead of alternating 1-2-3 (the visible judder of an uneven frame rate).
 static std::atomic<double> presentInterval{0};
+static std::atomic<int> upscaleMode{0}, upscaleMaxWidth{2796}, upscaleMaxHeight{1290};
+struct UpscaleParams {
+	float inSize[2];
+	float outSize[2];
+	float sharpness;
+	float vibrance;
+	float contrast;
+	uint32_t mode;
+};
 enum CommitReason { CPresent, CFence, CReadback, CIdle, CReasons };
 static const char *kCommitNames[CReasons] = {"present", "fence", "readback", "idle queries"};
 static void commit(CommitReason reason, id<CAMetalDrawable> drawable = nil) {
@@ -1843,14 +1852,43 @@ static void present(uint32_t texId) {
 		std::string name;
 		{ std::lock_guard<std::mutex> g(R->captureLock); name.swap(R->captureName); }
 		if (!name.empty()) capture(t, name);
-		CGSize size = CGSizeMake(t->width, t->height);
+		int uMode = upscaleMode.load(std::memory_order_relaxed);
+		bool useUpscale = (uMode > 0 && R->upscalePipe != nil && t->width >= 320 && t->height >= 180);
+		CGFloat outW = (CGFloat)t->width, outH = (CGFloat)t->height;
+		if (useUpscale) {
+			int maxW = std::max((int)t->width, upscaleMaxWidth.load(std::memory_order_relaxed));
+			int maxH = std::max((int)t->height, upscaleMaxHeight.load(std::memory_order_relaxed));
+			// Mode 1 (Balanced): ~1.35x crisp super-res capped at display max; Mode 2 (Ultra): full OLED display resolution.
+			double targetH = (uMode >= 2) ? (double)maxH : std::min((double)maxH, std::round((double)t->height * 1.35));
+			double aspect = (double)t->width / (double)t->height;
+			double targetW = std::min((double)maxW, std::round(targetH * aspect));
+			targetH = std::min((double)maxH, std::round(targetW / aspect));
+			int ew = std::max((int)t->width, ((int)targetW) & ~1);
+			int eh = std::max((int)t->height, ((int)targetH) & ~1);
+			outW = (CGFloat)ew; outH = (CGFloat)eh;
+		}
+		CGSize size = CGSizeMake(outW, outH);
 		if (!CGSizeEqualToSize(R->layer.drawableSize, size)) R->layer.drawableSize = size;
 		drawable = [R->layer nextDrawable];
 		if (drawable) {
 			MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
 			rp.colorAttachments[0].texture = drawable.texture; rp.colorAttachments[0].loadAction = MTLLoadActionDontCare; rp.colorAttachments[0].storeAction = MTLStoreActionStore;
 			id<MTLRenderCommandEncoder> e = [commandBuffer() renderCommandEncoderWithDescriptor:rp];
-			[e setRenderPipelineState:R->blitPipe]; [e setFragmentTexture:t->tex atIndex:0];
+			if (useUpscale) {
+				UpscaleParams params;
+				params.inSize[0] = (float)t->width; params.inSize[1] = (float)t->height;
+				params.outSize[0] = (float)drawable.texture.width; params.outSize[1] = (float)drawable.texture.height;
+				params.sharpness = (uMode >= 2) ? 0.85f : 0.65f;
+				params.vibrance = (uMode >= 2) ? 0.14f : 0.05f;
+				params.contrast = (uMode >= 2) ? 0.07f : 0.02f;
+				params.mode = (uint32_t)uMode;
+				[e setRenderPipelineState:R->upscalePipe];
+				[e setFragmentTexture:t->tex atIndex:0];
+				[e setFragmentBytes:&params length:sizeof(params) atIndex:0];
+			} else {
+				[e setRenderPipelineState:R->blitPipe];
+				[e setFragmentTexture:t->tex atIndex:0];
+			}
 			[e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
 			[e endEncoding];
 			t->lastUse = R->serial;
@@ -2224,6 +2262,63 @@ using namespace metal;
 struct V { float4 p [[position]]; };
 vertex V pg_fullscreen(uint i [[vertex_id]]) { float2 q[3] = {float2(-1, -1), float2(3, -1), float2(-1, 3)}; V v; v.p = float4(q[i], 0, 1); return v; }
 fragment float4 pg_blit(V in [[stage_in]], texture2d<float> t [[texture(0)]]) { return t.read(uint2(in.p.xy)); }
+struct UpscaleParams {
+	float2 inSize;
+	float2 outSize;
+	float sharpness;
+	float vibrance;
+	float contrast;
+	uint mode;
+};
+static inline float pg_luma(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
+fragment float4 pg_upscale_dlss(V in [[stage_in]], texture2d<float> t [[texture(0)]], constant UpscaleParams &u [[buffer(0)]]) {
+	constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
+	float2 uv = in.p.xy / max(u.outSize, float2(1.0));
+	float2 px = 1.0 / max(u.inSize, float2(1.0));
+	// 1. Subpixel edge-directed sampling along detected luma edge.
+	float3 cC = t.sample(s, uv).rgb;
+	float3 cN = t.sample(s, uv + float2(0.0, -px.y)).rgb;
+	float3 cS = t.sample(s, uv + float2(0.0,  px.y)).rgb;
+	float3 cW = t.sample(s, uv + float2(-px.x, 0.0)).rgb;
+	float3 cE = t.sample(s, uv + float2( px.x, 0.0)).rgb;
+	float3 cNW = t.sample(s, uv + float2(-px.x, -px.y)).rgb;
+	float3 cNE = t.sample(s, uv + float2( px.x, -px.y)).rgb;
+	float3 cSW = t.sample(s, uv + float2(-px.x,  px.y)).rgb;
+	float3 cSE = t.sample(s, uv + float2( px.x,  px.y)).rgb;
+	// Subpixel edge anti-aliasing: smooth staircase diagonals along detected luma edge.
+	float lC = pg_luma(cC), lN = pg_luma(cN), lS = pg_luma(cS), lW = pg_luma(cW), lE = pg_luma(cE);
+	float gx = abs(lE - lW), gy = abs(lN - lS);
+	float edgeStrength = clamp(max(gx, gy) * 3.0, 0.0, 1.0);
+	float2 dir = normalize(float2(lN - lS, lE - lW) + 1e-5);
+	float3 dirAvg = 0.5 * (t.sample(s, uv - dir * px * 0.45).rgb + t.sample(s, uv + dir * px * 0.45).rgb);
+	float3 base = mix(cC, dirAvg, (u.mode >= 2 ? 0.35 : 0.2) * edgeStrength);
+	// 2. Robust Contrast-Adaptive Sharpening (RCAS, clamping to local neighborhood to stop ringing).
+	float3 mn = min(min(min(cN, cS), min(cW, cE)), base);
+	float3 mx = max(max(max(cN, cS), max(cW, cE)), base);
+	float3 mn2 = min(mn, min(min(cNW, cNE), min(cSW, cSE)));
+	float3 mx2 = max(mx, max(max(cNW, cNE), max(cSW, cSE)));
+	float3 rmin = 0.5 * (mn + mn2), rmax = 0.5 * (mx + mx2);
+	float3 amp = clamp(min(rmin, 1.0 - rmax) / max(rmax, 1e-4), 0.0, 1.0);
+	amp = sqrt(amp);
+	float3 peak = -1.0 / mix(8.0, 5.0, u.sharpness);
+	float3 w = amp * peak;
+	float3 sharp = clamp((base + (cN + cS + cW + cE) * w) / (1.0 + 4.0 * w), rmin, rmax);
+	// 3. Subtle filmic micro-contrast & OLED vibrance enhancement.
+	if (u.mode >= 2) {
+		float3 smoothAvg = 0.25 * (cN + cS + cW + cE);
+		sharp = clamp(sharp + (sharp - smoothAvg) * 0.08, 0.0, 1.0);
+		float lum = pg_luma(sharp);
+		float sCurve = lum * lum * (3.0 - 2.0 * lum);
+		float targetLum = mix(lum, sCurve, u.contrast);
+		sharp = clamp(sharp * (targetLum / max(lum, 1e-4)), 0.0, 1.0);
+		float mxC = max(sharp.r, max(sharp.g, sharp.b));
+		float mnC = min(sharp.r, min(sharp.g, sharp.b));
+		float sat = mxC - mnC;
+		float vibScale = 1.0 + u.vibrance * (1.0 - sat);
+		sharp = clamp(mix(float3(pg_luma(sharp)), sharp, vibScale), 0.0, 1.0);
+	}
+	return float4(sharp, 1.0);
+}
 fragment float4 pg_alpha(V in [[stage_in]], texture2d<float> t [[texture(0)]]) { float a = t.read(uint2(in.p.xy)).a; return float4(a, a, a, 1); }
 fragment float4 pg_ds(V in [[stage_in]], depth2d<float> d [[texture(0)]], texture2d<uint> s [[texture(1)]]) { float z = d.read(uint2(in.p.xy)); uint st = s.read(uint2(in.p.xy)).r; return float4(z != 0 ? 1.0 : 0.0, saturate(z * 20.0), st != 0 ? 1.0 : 0.0, 1); }
 struct D { float depth [[depth(any)]]; };
@@ -2267,6 +2362,9 @@ static bool setup() {
 	pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
 	R->blitPipe = [R->device newRenderPipelineStateWithDescriptor:pd error:&error];
 	R->capturePipe = R->blitPipe;
+	pd.fragmentFunction = [helpers newFunctionWithName:@"pg_upscale_dlss"];
+	R->upscalePipe = [R->device newRenderPipelineStateWithDescriptor:pd error:&error];
+	if (!R->upscalePipe) { logf("Metal renderer: upscale pipeline failed: %s", error.localizedDescription.UTF8String); }
 #if MR_TRACE
 	pd.fragmentFunction = [helpers newFunctionWithName:@"pg_alpha"];
 	T.alphaPipe = [R->device newRenderPipelineStateWithDescriptor:pd error:&error];
@@ -2336,6 +2434,12 @@ extern "C" void PGStartMetalRenderer(void *memory, uint64_t memorySize, uint64_t
 
 extern "C" void PGMetalRendererSetPresentInterval(double seconds) {
 	mr::presentInterval.store(std::isfinite(seconds) && seconds > 0 && seconds <= 0.1 ? seconds : 0);
+}
+
+extern "C" void PGMetalRendererSetUpscaler(int mode, int maxWidth, int maxHeight) {
+	mr::upscaleMode.store(mode < 0 ? 0 : mode > 2 ? 2 : mode, std::memory_order_relaxed);
+	if (maxWidth >= 640 && maxWidth <= 3840) mr::upscaleMaxWidth.store(maxWidth & ~1, std::memory_order_relaxed);
+	if (maxHeight >= 360 && maxHeight <= 2160) mr::upscaleMaxHeight.store(maxHeight & ~1, std::memory_order_relaxed);
 }
 
 extern "C" double PGMetalRendererFPS(void) {

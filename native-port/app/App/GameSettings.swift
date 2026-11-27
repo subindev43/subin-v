@@ -145,6 +145,13 @@ final class GameSettings {
         get { defaults.integer(forKey: "engineMemoryMB") }
         set { defaults.set(newValue <= 0 ? 0 : min(max(newValue, 3072), 16384), forKey: "engineMemoryMB") }
     }
+    var upscalerMode: UpscalerMode {
+        get {
+            if let raw = defaults.object(forKey: "upscalerMode") as? Int, let mode = UpscalerMode(rawValue: raw) { return mode }
+            return tier.supportsDLSSUpscaler ? .ultra : .off
+        }
+        set { defaults.set(newValue.rawValue, forKey: "upscalerMode") }
+    }
     var sixtyFPS: Bool { frameRateCap != 30 }
     /// Frame rate cap: 30, 60, or 0 for unlocked (up to the screen's refresh rate, 120 on ProMotion).
     var frameRateCap: Int {

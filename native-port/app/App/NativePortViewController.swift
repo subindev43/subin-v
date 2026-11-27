@@ -1324,7 +1324,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         let renderHeight = thermalScale < 1 ? Int(Double(chosenHeight) * thermalScale) : settings.renderHeight
         let (width, height) = GraphicsConfiguration.size(for: bootedPreset, renderHeight: renderHeight, screen: view.bounds.size, matchScreenShape: settings.matchScreenShape)
         PGSetBackBufferSize(Int32(width), Int32(height))
-        appendLog("Graphics: live resize to \(width)×\(height)")
+        GraphicsConfiguration.applyUpscaler(settings)
+        appendLog("Graphics: live resize to \(width)×\(height) · \(settings.upscalerMode.title)")
     }
     @objc private func releaseTouchControls() {
         touchControls.reset(publish: false)
