@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 from download_ranges import download
 
@@ -30,7 +31,7 @@ def fetch(relative, expected_sha256=None, expected_bytes=None):
     target.parent.mkdir(parents=True, exist_ok=True)
     print(f'Downloading {relative} from your server...', flush=True)
     last_error = None
-    for attempt in range(1, 4):
+    for attempt in range(1, 7):
         try:
             download(f'{server}/{relative}', target, expected_sha256)
             if expected_bytes is not None and target.stat().st_size != expected_bytes:
@@ -38,6 +39,8 @@ def fetch(relative, expected_sha256=None, expected_bytes=None):
             return target
         except Exception as error:
             last_error = error
+            if attempt < 6:
+                time.sleep(attempt * 5)
     sys.exit(f'Could not download {server}/{relative}: {last_error}\n'
              'Check that the server is running, reachable, and serves the folder that contains data/ and b/.')
 
@@ -47,8 +50,12 @@ if not (engine.exists() and hashlib.sha256(engine.read_bytes()).hexdigest() == E
 if hashlib.sha256(engine.read_bytes()).hexdigest() != ENGINE_SHA256:
     sys.exit('Your game.wasm is not the build this port supports (8b0b5899ed). '
              'The engine patches are made for that exact file.')
-fetch('data/manifest.json')
-index = fetch(SHADERS + '/index.json', SHADER_INDEX_SHA256)
+manifest = args.out / 'data/manifest.json'
+if not (manifest.exists() and manifest.stat().st_size > 0):
+    fetch('data/manifest.json')
+index = args.out / (SHADERS + '/index.json')
+if not (index.exists() and hashlib.sha256(index.read_bytes()).hexdigest() == SHADER_INDEX_SHA256):
+    index = fetch(SHADERS + '/index.json', SHADER_INDEX_SHA256)
 if hashlib.sha256(index.read_bytes()).hexdigest() != SHADER_INDEX_SHA256:
     sys.exit('Your shader index does not match game build 8b0b5899ed.')
 for pack in json.loads(index.read_text())['_packs']:
