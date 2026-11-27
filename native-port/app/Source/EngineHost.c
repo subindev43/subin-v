@@ -187,7 +187,7 @@ u64 pg_video_memory(u64 reported){
  const char *configured=getenv("PG_VIDEO_MEMORY_MB");
  if(configured)mb=(uint64_t)atol(configured);
  else if(processLimitMB){
-  uint64_t textures=processLimitMB>1800+640?processLimitMB-1800:640;
+  uint64_t textures=processLimitMB>2048+512?processLimitMB-2048:512;
   mb=PGGPUReadsBC()?textures:textures/2;
   if(mb<640)mb=640;
  }
@@ -1197,10 +1197,19 @@ static const PGHospital pg_hospitals[] = {
 };
 
 static int pg_death_frames = 0;
+static int pg_respawn_poll_tick = 0;
 static void pg_process_player_respawn(w2c_game *instance) {
   if (!atomic_load(&inputBlock)) return;
+  // Story Mode uses GTA V's native respawn_controller and mission scripts (Prologue / checkpoints);
+  // overriding death & teleportation or polling natives every frame interferes with Story transitions.
+  if (configuredStartMode == 1) { pg_death_frames = 0; return; }
+  uint32_t status = PGGameStatus();
+  if ((status & (4u | 8u | 16u)) != 0 || PGPauseMenuActive()) { pg_death_frames = 0; return; }
+  if (!pg_death_frames && (++pg_respawn_poll_tick % 15) != 0) return;
+
+  uint64_t previous = pg_enter_script(instance, true);
   uint32_t ped = mg_call_u32(instance, "mp:PlayerPedId", NULL, 0);
-  if (!ped) { pg_death_frames = 0; return; }
+  if (!ped) { pg_death_frames = 0; pg_test_leave_script(instance, previous); return; }
 
   MugoatValue deadArgs[2] = { mg_u32(ped), mg_u32(1) };
   uint32_t isDead = mg_call_u32(instance, "mp:IsPedDeadOrDying", deadArgs, 2);
@@ -1208,15 +1217,10 @@ static void pg_process_player_respawn(w2c_game *instance) {
     // If a story mission is active, let GTA V's native mission script manage failure & checkpoint restart.
     // Do not auto-teleport to hospital during missions!
     uint32_t inMission = mg_call_u32(instance, "mp:GetMissionFlag", NULL, 0);
-    if (inMission) {
-      pg_death_frames = 0;
-      return;
-    }
+    if (inMission) { pg_death_frames = 0; pg_test_leave_script(instance, previous); return; }
 
     pg_death_frames++;
-    if (pg_death_frames < 180) return; // ~3.0s delay at 60fps for wasted screen
-
-    uint64_t previous = pg_test_enter_script(instance);
+    if (pg_death_frames < 180) { pg_test_leave_script(instance, previous); return; } // ~3.0s delay at 60fps for wasted screen
 
     // Get death location to find nearest hospital
     uint64_t coordsVector = w2c_game_f100(instance, 32);
@@ -1281,8 +1285,6 @@ static void pg_process_player_respawn(w2c_game *instance) {
       *(uint32_t *)pg_pointer(&env, playerInfo + 936, 4) = 0;
     }
 
-    pg_test_leave_script(instance, previous);
-
     char msg[128];
     snprintf(msg, sizeof msg, "Player respawned at %s (%.1f, %.1f, %.1f)",
              pg_hospitals[bestIndex].name, pg_hospitals[bestIndex].x, pg_hospitals[bestIndex].y, pg_hospitals[bestIndex].z);
@@ -1291,6 +1293,7 @@ static void pg_process_player_respawn(w2c_game *instance) {
   } else {
     pg_death_frames = 0;
   }
+  pg_test_leave_script(instance, previous);
 }
 
 static _Atomic int pg_emergency_exit_mode = 0;
@@ -1995,7 +1998,16 @@ static void *boot(void *ignored) {
 #endif
   if(nativeMemoryGuard)pg_log("Native streaming memory guard enabled with 384 MB of reserve.");
   pg_assets_prewarm();
-  nativeEngineCores=pg_engine_core_configuration(getenv("PG_ENGINE_CORES"));
+  const char *configuredCores = getenv("PG_ENGINE_CORES");
+  if (configuredCores && *configuredCores) {
+    nativeEngineCores = pg_engine_core_configuration(configuredCores);
+  } else {
+    int cpuCount = 0; size_t cpuSize = sizeof cpuCount;
+    sysctlbyname("hw.ncpu", &cpuCount, &cpuSize, NULL, 0);
+    // 6-core Apple Silicon (A15/A16/A17/A18 on iPhone 13 and newer) benefits from 4 engine
+    // workers while leaving 2 cores free for UIKit, Metal command submission, and audio.
+    nativeEngineCores = cpuCount >= 6 ? 4 : pg_engine_core_configuration(NULL);
+  }
   char coresOption[32];snprintf(coresOption,sizeof coresOption,"-numCores=%u",nativeEngineCores);
   char coresLog[96];snprintf(coresLog,sizeof coresLog,"Native engine worker configuration: %u logical cores.",nativeEngineCores);pg_log(coresLog);
   wasm_rt_init();

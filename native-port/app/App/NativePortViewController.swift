@@ -500,6 +500,12 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         // The game's own settings.xml only holds graphics and display options. Some choices in the
         // game's pause menu or auto-detection (MSAA, TXAA, tessellation, shader quality 2) crash Metal
         // or trigger out-of-memory. Overwrite with a sanitized safe baseline before each launch.
+        let presetLevel = bootedPreset.rawValue
+        let shadowVal = presetLevel >= GraphicsPreset.ultra.rawValue ? 1 : 0
+        let reflVal = presetLevel >= GraphicsPreset.quality.rawValue ? 1 : 0
+        let reflMipBlur = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
+        let fxaaVal = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
+        let vsyncVal = GameSettings.shared.frameRateCap == 0 ? 0 : 1
         let safeSettingsXml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <Settings>
@@ -508,8 +514,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
           <graphics>
             <TextureQuality value="0" />
             <ShaderQuality value="1" />
-            <ShadowQuality value="1" />
-            <ReflectionQuality value="1" />
+            <ShadowQuality value="\(shadowVal)" />
+            <ReflectionQuality value="\(reflVal)" />
             <ReflectionMSAA value="0" />
             <SSAO value="0" />
             <AnisotropicFiltering value="0" />
@@ -520,7 +526,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <ParticleQuality value="0" />
             <GrassQuality value="0" />
             <DeepSurfaceQuality value="0" />
-            <PedLodBias value="0.200000" />
+            <PedLodBias value="0.000000" />
             <VehicleLodBias value="0.000000" />
             <Shadow_Distance value="1.000000" />
             <Shadow_SoftShadows value="0" />
@@ -529,8 +535,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <Shadow_SplitZEnd value="0.890000" />
             <Shadow_aircraftExpBloom value="0.300000" />
             <Shadow_DisableScreenSizeCheck value="false" />
-            <Reflection_MipBlur value="true" />
-            <FXAA value="true" />
+            <Reflection_MipBlur value="\(reflMipBlur)" />
+            <FXAA value="\(fxaaVal)" />
             <TXAA value="false" />
             <Lighting_FogVolumes value="false" />
             <Shader_SSA value="false" />
@@ -549,7 +555,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
           </system>
           <video>
             <Windowed value="2" />
-            <VSync value="1" />
+            <VSync value="\(vsyncVal)" />
           </video>
         </Settings>
         """

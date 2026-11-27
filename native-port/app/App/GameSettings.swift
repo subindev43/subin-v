@@ -182,9 +182,9 @@ final class GameSettings {
         #endif
         guard bootPending else { return nil }
         bootPending = false
-        // Devices with 6GB+ RAM (iPad M-series, high-end iPhones) have plenty of memory.
+        // Devices with 6GB+ RAM (iOS reports ~5500+ MB on 6 GB iPhones) have plenty of memory.
         // Never automatically downgrade graphics or reset custom resolution on these devices.
-        if tier.physicalMemoryMB >= 6000 { return nil }
+        if tier.physicalMemoryMB >= 5400 { return nil }
         let failed = graphicsPreset
         // A preset that already ran stably on this phone is not the problem (the app was more likely
         // closed by an update or by Xcode): keep it, and only undo a resolution raised above it.

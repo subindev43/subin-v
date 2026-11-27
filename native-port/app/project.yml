@@ -57,7 +57,7 @@ targets:
           - "*.wasm"
           - "*.json"
       - path: Generated/game_0.c
-        compilerFlags: -w -O0
+        compilerFlags: -w -O1
       - path: Tools/wabt-1.0.42/share/wabt/wasm2c/wasm-rt-impl.c
       - path: Tools/wabt-1.0.42/share/wabt/wasm2c/wasm-rt-mem-impl.c
       - path: Tools/wabt-1.0.42/share/wabt/wasm2c/wasm-rt-exceptions-impl.c

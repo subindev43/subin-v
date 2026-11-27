@@ -263,6 +263,7 @@ final class TouchControlsView: UIView {
         case characterWheel(start: CGPoint, current: CGPoint)
         case fireLook(ControlButton)
         case mapPointer(start: CGPoint, current: CGPoint, dragging: Bool)
+        case minimapTap(start: CGPoint, since: CFTimeInterval)
     }
     private var roles: [ObjectIdentifier: Role] = [:]
     private var mapPinch = PinchTracker()
@@ -744,6 +745,9 @@ final class TouchControlsView: UIView {
                 }
             } else if phoneDock {
                 if !has(isLook) { roles[id] = .look; lookStick.begin(at: point) }
+            } else if !promptActive, point.x < safe.minX + safe.width * 0.24, point.y > safe.minY + safe.height * 0.70 {
+                // Bottom-left minimap: short tap opens the Pause Map; dragging starts moving/steering cleanly.
+                roles[id] = .minimapTap(start: point, since: CACurrentMediaTime())
             } else if context.flying, leftZone {
                 if !has(isStick) { roles[id] = .moveStick; moveStick.begin(at: point) }
             } else if leftZone, context.driving, GameSettings.shared.steeringButtons {
@@ -853,6 +857,16 @@ final class TouchControlsView: UIView {
             case .steer:
                 // Up/down tilts a car in the air and leans a bike.
                 moveStick.move(to: point)
+            case .minimapTap(let start, _):
+                if hypot(point.x - start.x, point.y - start.y) > 10 {
+                    if !context.flying && context.driving && GameSettings.shared.steeringButtons {
+                        roles[id] = nil
+                    } else if !has(isStick) {
+                        roles[id] = context.driving ? .steer : .moveStick
+                        moveStick.begin(at: start)
+                        moveStick.move(to: point)
+                    }
+                }
             case .radioWheel(let start, _, let since):
                 roles[id] = .radioWheel(start: start, current: point, since: since)
             case .look:
@@ -899,14 +913,20 @@ final class TouchControlsView: UIView {
         publish()
     }
 
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { finish(touches) }
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { finish(touches) }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { finish(touches, cancelled: false) }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { finish(touches, cancelled: true) }
 
-    private func finish(_ touches: Set<UITouch>) {
+    private func finish(_ touches: Set<UITouch>, cancelled: Bool = false) {
         for touch in touches {
             guard let role = roles.removeValue(forKey: ObjectIdentifier(touch)) else { continue }
             dragCamera.end(ObjectIdentifier(touch))
             switch role {
+            case .minimapTap(let start, let since):
+                let pt = touch.location(in: self)
+                if !cancelled, hypot(pt.x - start.x, pt.y - start.y) <= 10, CACurrentMediaTime() - since < 0.35 {
+                    haptics.impactOccurred(intensity: 0.5)
+                    pulse(.start, for: 0.14)
+                }
             case .moveStick, .steer: moveStick.end(); sprintSince = nil
             case .look: lookStick.end()
             case .weaponWheel: weapons.setPressed(false); updateVisibility()
@@ -925,7 +945,7 @@ final class TouchControlsView: UIView {
                 let travel = hypot(pt.x - start.x, pt.y - start.y)
                 if !dragging && travel <= 8 {
                     sendMenuPointer(at: pt, buttons: 1)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.11) {
                         self.sendMenuPointer(at: pt, buttons: 0)
                     }
                 } else {
@@ -960,7 +980,7 @@ final class TouchControlsView: UIView {
             case .weaponWheel: weapons.setPressed(false)
             case .characterWheel: switcher.setPressed(false)
             case .look: lookStick.end()
-            case .mapPointer: break
+            case .mapPointer, .minimapTap: break
             }
             roles[id] = nil
         }
