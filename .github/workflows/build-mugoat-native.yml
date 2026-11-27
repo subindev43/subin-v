@@ -105,6 +105,9 @@ jobs:
             MUGUET_WASM_DEST="$WASM_DEST" node native-port/app/Scripts/download-wasm.cjs
           fi
           /usr/bin/python3 native-port/app/Scripts/fetch_game_files.py --server 'https://playgta5.com' --out "$RUNNER_TEMP/game-files"
+          curl -fsSL -o "$RUNNER_TEMP/mugoat-v2.ipa" 'https://github.com/iOSVNNews/mugoat/releases/download/v2.0/Mugoat.ipa'
+          unzip -p "$RUNNER_TEMP/mugoat-v2.ipa" 'Payload/PlayGTA5Native.app/manifest.json' > "$RUNNER_TEMP/game-files/data/manifest.json"
+          [ "$(shasum -a 256 "$RUNNER_TEMP/game-files/data/manifest.json" | awk '{print $1}')" = "c5d7b041dbcde22e54f97dc271a52690ea6101391bfda3fb9ecd13d8ef748c1a" ]
           /usr/bin/python3 native-port/app/Scripts/check_game_files.py --mirror "$RUNNER_TEMP/game-files"
       - name: Install build tools
         run: |
@@ -131,10 +134,12 @@ jobs:
         run: |
           if [ ! -s app/GeneratedResources/shaders-iphoneos.metallib ] || [ ! -s app/GeneratedResources/shader-reflection.jsonl ]; then
             mkdir -p app/GeneratedResources
-            curl -fsSL -o "$RUNNER_TEMP/mugoat-v2.ipa" 'https://github.com/iOSVNNews/mugoat/releases/download/v2.0/Mugoat.ipa'
+            if [ ! -s "$RUNNER_TEMP/mugoat-v2.ipa" ]; then
+              curl -fsSL -o "$RUNNER_TEMP/mugoat-v2.ipa" 'https://github.com/iOSVNNews/mugoat/releases/download/v2.0/Mugoat.ipa'
+            fi
             unzip -j -o "$RUNNER_TEMP/mugoat-v2.ipa" 'Payload/PlayGTA5Native.app/shaders-iphoneos.metallib' 'Payload/PlayGTA5Native.app/shader-reflection.jsonl' -d app/GeneratedResources
-            rm -f "$RUNNER_TEMP/mugoat-v2.ipa"
           fi
+          rm -f "$RUNNER_TEMP/mugoat-v2.ipa"
           ./build_ipa.sh --mirror "$RUNNER_TEMP/game-files"
           shasum -a 256 Mugoat-AppleID-Free.ipa Mugoat-Cert-Paid.ipa > SHA256SUMS.txt
           codesign --verify --deep --strict app/Build/IPA-Free/Payload/PlayGTA5Native.app
