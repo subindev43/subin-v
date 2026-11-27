@@ -127,7 +127,7 @@ final class SettingsViewController: UITableViewController {
         case .gyro:
             return L10n.text("Move the phone to fine-tune your aim; turning your body turns the camera. Tilt steering turns the phone like a steering wheel: Assist adds fine control on top of the touch steering, Tilt to steer replaces it. The straight-ahead angle is however you hold the phone when you get in.")
         case .files: return filesFooter()
-        case .device: return "SUBIN V · Cyberpunk Neon · \(Theme.appVersion). Chia sẻ log kèm phiên bản này khi báo lỗi."
+        case .device: return "SUBIN V · Rose Noir · \(Theme.appVersion). Chia sẻ log kèm phiên bản này khi báo lỗi."
         }
     }
 

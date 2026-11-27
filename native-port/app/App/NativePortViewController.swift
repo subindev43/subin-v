@@ -139,7 +139,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             let title = button.isEnabled || !(self?.engineStarted ?? false) ? L10n.text("Vào game") : button.title(for: .disabled) ?? L10n.text("Đang tải…")
             var text = AttributedString(title)
             text.font = Theme.display(20, .heavy)
-            text.foregroundColor = button.isEnabled ? UIColor(red: 0.02, green: 0.13, blue: 0.15, alpha: 1) : UIColor(white: 1, alpha: 0.7)
+            text.foregroundColor = button.isEnabled ? Theme.obsidianDark : UIColor(white: 1, alpha: 0.65)
             button.configuration?.attributedTitle = text
             button.configuration?.image = title == L10n.text("Vào game") ? UIImage(systemName: "play.fill", withConfiguration: UIImage.SymbolConfiguration(weight: .heavy)) : nil
         }
@@ -193,7 +193,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         fpsLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .bold)
         fpsLabel.textColor = Theme.accent
         fpsLabel.textAlignment = .center
-        fpsLabel.backgroundColor = UIColor(red: 0.035, green: 0.055, blue: 0.125, alpha: 0.80)
+        fpsLabel.backgroundColor = UIColor(red: 0.065, green: 0.024, blue: 0.105, alpha: 0.84)
         fpsLabel.layer.cornerRadius = 13
         fpsLabel.layer.cornerCurve = .continuous
         fpsLabel.layer.borderWidth = 1

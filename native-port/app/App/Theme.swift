@@ -1,7 +1,7 @@
 import UIKit
 
-/// Cyberpunk Neon design system for SUBIN-IOS: deep night glass, cyan/purple neon accents,
-/// and real backdrop artwork rendering with balanced edge scrims.
+/// Rose Noir (Pink · Violet · Obsidian) design system for SUBIN-V: deep obsidian-plum glass,
+/// neon rose-pink and royal violet accents, GTA artwork cards, and 120 Hz smooth springs.
 enum Theme {
     /// The app's version as players should quote it in reports, e.g. "v2.0 (20)".
     static let appVersion: String = {
@@ -9,20 +9,22 @@ enum Theme {
         return "v\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))"
     }()
 
-    /// Primary neon cyan accent.
-    static let accent = UIColor(red: 0.133, green: 0.827, blue: 0.933, alpha: 1)      // #22D3EE
-    static let accentDeep = UIColor(red: 0.024, green: 0.714, blue: 0.831, alpha: 1)  // #06B6D4
+    /// Primary Neon Rose Pink accent.
+    static let accent = UIColor(red: 1.000, green: 0.302, blue: 0.651, alpha: 1)      // #FF4DA6
+    static let accentDeep = UIColor(red: 0.851, green: 0.149, blue: 0.533, alpha: 1)  // #D92688
     static let neonPurple = UIColor(red: 0.659, green: 0.333, blue: 0.969, alpha: 1)  // #A855F7
+    static let softPink = UIColor(red: 0.976, green: 0.659, blue: 0.831, alpha: 1)    // #F9A8D4
     static let ok = UIColor(red: 0.204, green: 0.827, blue: 0.600, alpha: 1)          // #34D399
     static let warning = UIColor(red: 0.984, green: 0.749, blue: 0.141, alpha: 1)     // #FBBF24
     static let problem = UIColor(red: 0.984, green: 0.443, blue: 0.522, alpha: 1)     // #FB7185
     static let text = UIColor.white
-    static let secondaryText = UIColor(white: 1, alpha: 0.72)
+    static let secondaryText = UIColor(white: 1, alpha: 0.76)
     static let tertiaryText = UIColor(white: 1, alpha: 0.48)
-    static let night = UIColor(red: 0.024, green: 0.035, blue: 0.075, alpha: 1)       // #060913
-    static let panelStroke = UIColor(red: 0.133, green: 0.827, blue: 0.933, alpha: 0.24)
-    static let rowBackground = UIColor(red: 0.055, green: 0.082, blue: 0.165, alpha: 0.74)
-    static let rowSelected = UIColor(red: 0.133, green: 0.827, blue: 0.933, alpha: 0.18)
+    static let night = UIColor(red: 0.027, green: 0.016, blue: 0.055, alpha: 1)       // #07040E
+    static let obsidianDark = UIColor(red: 0.065, green: 0.024, blue: 0.105, alpha: 1)// #10061B
+    static let panelStroke = UIColor(red: 1.000, green: 0.302, blue: 0.651, alpha: 0.26)
+    static let rowBackground = UIColor(red: 0.075, green: 0.043, blue: 0.125, alpha: 0.78)
+    static let rowSelected = UIColor(red: 1.000, green: 0.302, blue: 0.651, alpha: 0.20)
 
     static func display(_ size: CGFloat, _ weight: UIFont.Weight = .heavy) -> UIFont {
         let base = UIFont.systemFont(ofSize: size, weight: weight)
@@ -34,10 +36,10 @@ enum Theme {
         .systemFont(ofSize: size, weight: weight)
     }
 
-    /// A blurred neon-tinted glass panel with a crisp hairline stroke. Put content in `contentView`.
+    /// A blurred obsidian-plum glass panel with a crisp rose-pink hairline stroke.
     static func panel(cornerRadius: CGFloat = 16, stroke: UIColor = panelStroke) -> UIVisualEffectView {
         let panel = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-        panel.contentView.backgroundColor = UIColor(red: 0.045, green: 0.070, blue: 0.145, alpha: 0.45)
+        panel.contentView.backgroundColor = UIColor(red: 0.055, green: 0.024, blue: 0.098, alpha: 0.58)
         panel.layer.cornerRadius = cornerRadius
         panel.layer.cornerCurve = .continuous
         panel.clipsToBounds = true
@@ -46,41 +48,40 @@ enum Theme {
         return panel
     }
 
-    /// Renders the real background artwork (`StartBackground` / `SettingsBackground`) with side scrims
-    /// so left/right HUD cards stay legible while the center artwork remains clear.
-    static func backdrop(image name: String, darken: CGFloat = 0.55) -> UIView {
+    /// Renders the real background artwork (`StartBackground` / `SettingsBackground`) with subtle
+    /// black-plum edge scrims so left/right launcher controls stay crisp while the center shines.
+    static func backdrop(image name: String, darken: CGFloat = 0.52) -> UIView {
         let view = UIView()
         view.backgroundColor = night
 
         let fallback = GradientView(
             colors: [
-                UIColor(red: 0.07, green: 0.05, blue: 0.22, alpha: 1),
+                UIColor(red: 0.18, green: 0.03, blue: 0.14, alpha: 1),
                 night,
-                UIColor(red: 0.02, green: 0.14, blue: 0.24, alpha: 1)
+                UIColor(red: 0.11, green: 0.03, blue: 0.20, alpha: 1)
             ],
-            locations: [0, 0.52, 1],
+            locations: [0, 0.5, 1],
             horizontal: true
         )
 
         let imageView = UIImageView(image: UIImage(named: name))
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.alpha = 0.94
+        imageView.alpha = 0.95
 
-        // Darken left & right edges where controls sit, keep center bright for artwork & title.
         let sideShade = GradientView(
             colors: [
-                night.withAlphaComponent(min(0.86, darken + 0.26)),
-                night.withAlphaComponent(0.10),
-                night.withAlphaComponent(min(0.86, darken + 0.26))
+                night.withAlphaComponent(min(0.84, darken + 0.24)),
+                night.withAlphaComponent(0.08),
+                night.withAlphaComponent(min(0.84, darken + 0.24))
             ],
             locations: [0, 0.5, 1],
             horizontal: true
         )
 
         let floorShade = GradientView(
-            colors: [.clear, night.withAlphaComponent(0.62)],
-            locations: [0.58, 1],
+            colors: [.clear, night.withAlphaComponent(0.72)],
+            locations: [0.55, 1],
             horizontal: false
         )
 
@@ -98,26 +99,26 @@ enum Theme {
         return view
     }
 
-    /// Evenly dimmed artwork behind Settings / Mod / Save / Files screens.
+    /// Evenly dimmed Rose Noir artwork behind Settings / Mod / Save / Files screens.
     static func dimmedBackdrop(image name: String) -> UIView {
         let view = UIView()
         view.backgroundColor = night
 
         let fallback = GradientView(
-            colors: [night, UIColor(red: 0.06, green: 0.05, blue: 0.16, alpha: 1)],
+            colors: [night, UIColor(red: 0.12, green: 0.03, blue: 0.17, alpha: 1)],
             locations: [0, 1],
             horizontal: true
         )
         let imageView = UIImageView(image: UIImage(named: name))
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.alpha = 0.55
+        imageView.alpha = 0.45
 
         let shade = GradientView(
             colors: [
-                night.withAlphaComponent(0.82),
-                UIColor(red: 0.03, green: 0.05, blue: 0.11, alpha: 0.72),
-                night.withAlphaComponent(0.86)
+                night.withAlphaComponent(0.86),
+                UIColor(red: 0.055, green: 0.020, blue: 0.095, alpha: 0.74),
+                night.withAlphaComponent(0.88)
             ],
             locations: [0, 0.5, 1],
             horizontal: true
@@ -132,39 +133,42 @@ enum Theme {
         return view
     }
 
-    /// Primary Neon Cyan CTA button (Play / Save / Continue).
+    /// GTA Launcher-inspired pearl-white Play CTA with glowing Pink-Violet accent strip.
     static func primaryButton(_ title: String, symbol: String? = nil) -> UIButton {
         var config = UIButton.Configuration.filled()
         config.title = title
         config.image = symbol.map { UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(weight: .heavy)) } ?? nil
         config.imagePadding = 10
-        config.cornerStyle = .capsule
-        config.baseForegroundColor = UIColor(red: 0.015, green: 0.075, blue: 0.10, alpha: 1)
-        config.background.backgroundColor = accent
-        config.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24)
+        config.cornerStyle = .fixed
+        config.background.cornerRadius = 15
+        config.baseForegroundColor = obsidianDark
+        config.background.backgroundColor = UIColor(red: 0.992, green: 0.957, blue: 0.980, alpha: 1) // #FFF4FA
+        config.contentInsets = NSDirectionalEdgeInsets(top: 13, leading: 22, bottom: 13, trailing: 22)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var attributes = attributes
-            attributes.font = display(18, .heavy)
+            attributes.font = display(17, .black)
             return attributes
         }
-        let button = NeonGlowButton(configuration: config)
+        let button = PrimaryPlayButton(configuration: config)
         button.configurationUpdateHandler = { button in
             button.configuration?.background.backgroundColor = button.isEnabled
-                ? (button.isHighlighted ? accentDeep : accent)
+                ? (button.isHighlighted
+                    ? UIColor(red: 0.96, green: 0.84, blue: 0.92, alpha: 1)
+                    : UIColor(red: 0.992, green: 0.957, blue: 0.980, alpha: 1))
                 : UIColor(white: 1, alpha: 0.14)
             button.configuration?.baseForegroundColor = button.isEnabled
-                ? UIColor(red: 0.015, green: 0.075, blue: 0.10, alpha: 1)
+                ? obsidianDark
                 : UIColor(white: 1, alpha: 0.55)
             springPress(button, pressed: button.isHighlighted && button.isEnabled)
         }
         button.layer.shadowColor = accent.cgColor
-        button.layer.shadowOpacity = 0.45
+        button.layer.shadowOpacity = 0.48
         button.layer.shadowRadius = 16
-        button.layer.shadowOffset = .zero
+        button.layer.shadowOffset = CGSize(width: 0, height: 3)
         return button
     }
 
-    /// Translucent dark glass capsule button with neon stroke.
+    /// Translucent obsidian-violet glass capsule button with rose-pink hairline.
     static func glassButton(_ title: String, symbol: String, accentColor: UIColor = accent) -> UIButton {
         var config = UIButton.Configuration.filled()
         config.title = title
@@ -172,8 +176,8 @@ enum Theme {
         config.imagePadding = 7
         config.cornerStyle = .capsule
         config.baseForegroundColor = text
-        config.background.backgroundColor = UIColor(red: 0.055, green: 0.086, blue: 0.17, alpha: 0.78)
-        config.background.strokeColor = accentColor.withAlphaComponent(0.32)
+        config.background.backgroundColor = UIColor(red: 0.082, green: 0.039, blue: 0.137, alpha: 0.80)
+        config.background.strokeColor = accentColor.withAlphaComponent(0.36)
         config.background.strokeWidth = 1
         config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 13, bottom: 8, trailing: 13)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
@@ -189,19 +193,19 @@ enum Theme {
         return button
     }
 
-    /// Compact Cyberpunk Neon dashboard tile button for the 2x3 Home action grid.
-    static func tileButton(_ title: String, subtitle: String? = nil, symbol: String, tint: UIColor = accent, highlighted: Bool = false) -> UIButton {
+    /// GTA x iOS Dashboard card tile supporting optional artwork backdrop & pink/violet glow border.
+    static func tileButton(_ title: String, subtitle: String? = nil, symbol: String, tint: UIColor = accent, highlighted: Bool = false, artwork: String? = nil) -> UIButton {
         var config = UIButton.Configuration.filled()
         config.title = title
         config.subtitle = subtitle
-        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold))
+        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold))
         config.imagePlacement = .top
         config.imagePadding = 6
         config.titleAlignment = .leading
         config.cornerStyle = .fixed
-        config.background.cornerRadius = 14
-        config.background.backgroundColor = UIColor(red: 0.055, green: 0.085, blue: 0.175, alpha: 0.80)
-        config.background.strokeColor = highlighted ? tint.withAlphaComponent(0.75) : tint.withAlphaComponent(0.28)
+        config.background.cornerRadius = 15
+        config.background.backgroundColor = artwork != nil ? .clear : UIColor(red: 0.075, green: 0.038, blue: 0.128, alpha: 0.84)
+        config.background.strokeColor = highlighted ? tint.withAlphaComponent(0.85) : tint.withAlphaComponent(0.30)
         config.background.strokeWidth = highlighted ? 1.5 : 1
         config.baseForegroundColor = text
         config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 11, bottom: 10, trailing: 11)
@@ -217,7 +221,10 @@ enum Theme {
             a.foregroundColor = secondaryText
             return a
         }
-        let button = UIButton(configuration: config)
+        let button = TileArtworkButton(configuration: config)
+        if let artwork, let img = UIImage(named: artwork) {
+            button.installArtwork(img, tint: tint)
+        }
         button.contentHorizontalAlignment = .leading
         button.configurationUpdateHandler = { b in
             b.alpha = b.isEnabled ? (b.isHighlighted ? 0.86 : 1.0) : 0.45
@@ -276,10 +283,72 @@ final class GradientView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 }
 
-/// Keeps a cached shadowPath on primary CTA buttons so CoreAnimation avoids offscreen passes.
-private final class NeonGlowButton: UIButton {
+/// Rockstar-inspired Play CTA pill with bottom Neon Rose-to-Violet accent bar and cached shadowPath.
+private final class PrimaryPlayButton: UIButton {
+    private let accentBar = CAGradientLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupAccentBar()
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    private func setupAccentBar() {
+        accentBar.colors = [Theme.accent.cgColor, Theme.neonPurple.cgColor]
+        accentBar.startPoint = CGPoint(x: 0, y: 0.5)
+        accentBar.endPoint = CGPoint(x: 1, y: 0.5)
+        accentBar.cornerRadius = 2
+        layer.addSublayer(accentBar)
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height * 0.5).cgPath
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: 15).cgPath
+        let barHeight: CGFloat = 3.5
+        let inset: CGFloat = 14
+        accentBar.frame = CGRect(x: inset, y: bounds.height - barHeight, width: max(0, bounds.width - inset * 2), height: barHeight)
+    }
+}
+
+/// Dashboard tile hosting masked GTA artwork photo + obsidian-plum scrim behind title/icon.
+private final class TileArtworkButton: UIButton {
+    private let backdropContainer = UIView()
+    private let artView = UIImageView()
+    private var scrimView: GradientView?
+
+    func installArtwork(_ image: UIImage, tint: UIColor) {
+        backdropContainer.isUserInteractionEnabled = false
+        backdropContainer.clipsToBounds = true
+        backdropContainer.layer.cornerRadius = 15
+        backdropContainer.layer.cornerCurve = .continuous
+        backdropContainer.frame = bounds
+        backdropContainer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        artView.image = image
+        artView.contentMode = .scaleAspectFill
+        artView.alpha = 0.42
+        artView.frame = backdropContainer.bounds
+        artView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        let scrim = GradientView(
+            colors: [
+                UIColor(red: 0.06, green: 0.02, blue: 0.11, alpha: 0.62),
+                UIColor(red: 0.04, green: 0.015, blue: 0.08, alpha: 0.90)
+            ],
+            locations: [0, 1],
+            horizontal: false
+        )
+        scrim.frame = backdropContainer.bounds
+        scrim.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scrimView = scrim
+
+        backdropContainer.addSubview(artView)
+        backdropContainer.addSubview(scrim)
+        insertSubview(backdropContainer, at: 0)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        backdropContainer.frame = bounds
     }
 }

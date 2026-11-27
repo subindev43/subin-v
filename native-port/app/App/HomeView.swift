@@ -1,18 +1,17 @@
 import UIKit
 
-/// Cyberpunk Neon start screen: splits controls cleanly to the left and right edges
-/// so the center SUBIN-IOS artwork stays unobstructed. Preserves all public actions
-/// and properties used by NativePortViewController and PreviewApp.
+/// Rose Noir (Pink · Violet · Obsidian) start launcher: blends GTA artwork cards with sleek iOS glass
+/// controls along the left and right edges while keeping the center SUBIN-V hero artwork clean.
 final class HomeView: UIView {
     enum FilesState { case ready, attention, problem, busy }
 
     let playButton = Theme.primaryButton(L10n.text("Vào game"), symbol: "play.fill")
-    let cheatButton = Theme.tileButton(L10n.text("Menu Cheat"), subtitle: L10n.text("Trainer & Gọi xe"), symbol: "bolt.fill", tint: Theme.accent, highlighted: true)
-    let modButton = Theme.tileButton(L10n.text("Quản lý Mod"), subtitle: L10n.text("DLC .rpf & Xe mod"), symbol: "cube.box.fill", tint: Theme.neonPurple)
-    let settingsButton = Theme.tileButton(L10n.text("Đồ họa & FPS"), subtitle: L10n.text("Metal · 120 FPS · RAM"), symbol: "slider.horizontal.3", tint: Theme.accent)
-    let layoutButton = Theme.tileButton(L10n.text("Bố trí nút"), subtitle: L10n.text("Cảm ứng & Gyro"), symbol: "hand.tap.fill", tint: Theme.ok)
-    let onlineButton = Theme.tileButton(L10n.text("Máy chủ Online"), subtitle: L10n.text("UDP · Voice 3D"), symbol: "network", tint: Theme.neonPurple)
-    let saveButton = Theme.tileButton(L10n.text("Save game"), subtitle: L10n.text("Sao lưu & Khôi phục"), symbol: "externaldrive.fill", tint: Theme.warning)
+    let cheatButton = Theme.tileButton(L10n.text("Menu Cheat"), subtitle: L10n.text("Trainer & Gọi xe"), symbol: "bolt.fill", tint: Theme.accent, highlighted: true, artwork: "CardSettings")
+    let modButton = Theme.tileButton(L10n.text("Quản lý Mod"), subtitle: L10n.text("DLC .rpf & Xe mod"), symbol: "cube.box.fill", tint: Theme.neonPurple, artwork: "CardMods")
+    let settingsButton = Theme.tileButton(L10n.text("Đồ họa & FPS"), subtitle: L10n.text("DLSS5 · 120 FPS · RAM"), symbol: "slider.horizontal.3", tint: Theme.accent, artwork: "CardSettings")
+    let layoutButton = Theme.tileButton(L10n.text("Bố trí nút"), subtitle: L10n.text("Cảm ứng & Gyro"), symbol: "hand.tap.fill", tint: Theme.softPink)
+    let onlineButton = Theme.tileButton(L10n.text("Máy chủ Online"), subtitle: L10n.text("UDP · Voice 3D"), symbol: "network", tint: Theme.neonPurple, artwork: "CardOnline")
+    let saveButton = Theme.tileButton(L10n.text("Save game"), subtitle: L10n.text("Sao lưu & Khôi phục"), symbol: "externaldrive.fill", tint: Theme.warning, artwork: "CardStory")
     let languageButton = Theme.glassButton("VI", symbol: "globe")
     let preloadLabel = UILabel()
     let controllerLabel = UILabel()
@@ -33,34 +32,34 @@ final class HomeView: UIView {
 
     init(modes: [(title: String, symbol: String)], log: UIView) {
         super.init(frame: .zero)
-        let backdrop = Theme.backdrop(image: "StartBackground", darken: 0.56)
+        let backdrop = Theme.backdrop(image: "StartBackground", darken: 0.54)
         pin(backdrop, to: self)
 
-        // Top compact status header (left brand pill + right language pill, center clear for SUBIN-IOS art)
+        // Top compact status header (left brand pill + right language pill, center clear for SUBIN-V hero art)
         let icon = UIImageView(image: UIImage(named: "HomeIcon"))
         icon.contentMode = .scaleAspectFill
         icon.backgroundColor = .black
-        icon.layer.cornerRadius = 10
+        icon.layer.cornerRadius = 11
         icon.layer.cornerCurve = .continuous
-        icon.layer.borderWidth = 1
-        icon.layer.borderColor = Theme.accent.withAlphaComponent(0.6).cgColor
+        icon.layer.borderWidth = 1.2
+        icon.layer.borderColor = Theme.accent.withAlphaComponent(0.75).cgColor
         icon.clipsToBounds = true
-        icon.widthAnchor.constraint(equalToConstant: 36).isActive = true
-        icon.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        icon.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 38).isActive = true
 
         let title = UILabel()
         title.text = "SUBIN V"
         title.font = Theme.display(19, .black)
         title.textColor = Theme.text
 
-        let badge = PaddedBadge(text: "METAL AOT · \(Theme.appVersion)", accent: Theme.accent)
+        let badge = PaddedBadge(text: "ROSE NOIR · \(Theme.appVersion)", accent: Theme.accent)
         let titleStack = UIStackView(arrangedSubviews: [title, badge])
         titleStack.axis = .vertical
         titleStack.spacing = 2
         titleStack.alignment = .leading
 
         let brandRow = UIStackView(arrangedSubviews: [icon, titleStack])
-        brandRow.spacing = 9
+        brandRow.spacing = 10
         brandRow.alignment = .center
 
         let topBar = UIStackView(arrangedSubviews: [brandRow, UIView(), languageButton])
@@ -70,10 +69,12 @@ final class HomeView: UIView {
         languageButton.setContentHuggingPriority(.required, for: .horizontal)
         addSubview(topBar)
 
-        // Left launch column: Files -> Mode -> Description -> Play -> Telemetry
+        // Left launch dock: Mode Artwork Cards -> Description -> Play CTA -> Floating Files Card -> Telemetry
         buildFilesCard()
+        let modeArtworks = ["CardStory", "CardSandbox"]
         for (index, mode) in modes.enumerated() {
-            let card = ModeCard(title: L10n.text(mode.title), symbol: mode.symbol)
+            let art = index < modeArtworks.count ? modeArtworks[index] : nil
+            let card = ModeCard(title: L10n.text(mode.title), symbol: mode.symbol, artwork: art)
             card.addAction(UIAction { [weak self] _ in self?.onMode?(index) }, for: .touchUpInside)
             modeCards.append(card)
         }
@@ -91,16 +92,17 @@ final class HomeView: UIView {
 
         for label in [preloadLabel, controllerLabel] {
             label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-            label.textColor = Theme.accent.withAlphaComponent(0.9)
+            label.textColor = Theme.softPink.withAlphaComponent(0.92)
             label.numberOfLines = 0
         }
         preloadLabel.isHidden = true
 
-        let leftColumn = UIStackView(arrangedSubviews: [filesCard, modesStack, modeDetail, mapRow, playButton, preloadLabel, controllerLabel])
+        let leftColumn = UIStackView(arrangedSubviews: [modesStack, modeDetail, mapRow, playButton, filesCard, preloadLabel, controllerLabel])
         leftColumn.axis = .vertical
         leftColumn.spacing = 9
         leftColumn.setCustomSpacing(4, after: modesStack)
         leftColumn.setCustomSpacing(10, after: modeDetail)
+        leftColumn.setCustomSpacing(10, after: playButton)
         leftColumn.alignment = .fill
         leftColumn.translatesAutoresizingMaskIntoConstraints = false
 
@@ -111,26 +113,37 @@ final class HomeView: UIView {
         addSubview(leftScroll)
         leftScroll.addSubview(leftColumn)
 
-        // Right 2x3 Neon Grid Dashboard
+        // Right 2x3 GTA × iOS Dashboard Grid
+        let hubDot = UIView()
+        hubDot.backgroundColor = Theme.accent
+        hubDot.layer.cornerRadius = 3.5
+        hubDot.translatesAutoresizingMaskIntoConstraints = false
+        hubDot.widthAnchor.constraint(equalToConstant: 7).isActive = true
+        hubDot.heightAnchor.constraint(equalToConstant: 7).isActive = true
+
         let hubHeader = UILabel()
         hubHeader.text = L10n.text("Thiết lập trải nghiệm")
-        hubHeader.font = Theme.display(14, .bold)
-        hubHeader.textColor = Theme.secondaryText
+        hubHeader.font = Theme.display(13, .bold)
+        hubHeader.textColor = Theme.softPink
+
+        let hubTitleRow = UIStackView(arrangedSubviews: [hubDot, hubHeader, UIView()])
+        hubTitleRow.spacing = 6
+        hubTitleRow.alignment = .center
 
         let row1 = makeGridRow(cheatButton, modButton)
         let row2 = makeGridRow(settingsButton, layoutButton)
         let row3 = makeGridRow(onlineButton, saveButton)
 
         let versionLabel = UILabel()
-        versionLabel.text = "SUBIN V · Cyberpunk Neon · \(Theme.appVersion)"
+        versionLabel.text = "SUBIN V · Rose Noir · \(Theme.appVersion)"
         versionLabel.font = .monospacedSystemFont(ofSize: 10, weight: .medium)
         versionLabel.textColor = Theme.tertiaryText
         versionLabel.textAlignment = .right
 
-        let rightColumn = UIStackView(arrangedSubviews: [hubHeader, row1, row2, row3, versionLabel])
+        let rightColumn = UIStackView(arrangedSubviews: [hubTitleRow, row1, row2, row3, versionLabel])
         rightColumn.axis = .vertical
         rightColumn.spacing = 8
-        rightColumn.setCustomSpacing(6, after: hubHeader)
+        rightColumn.setCustomSpacing(6, after: hubTitleRow)
         rightColumn.alignment = .fill
         rightColumn.translatesAutoresizingMaskIntoConstraints = false
 
@@ -185,7 +198,7 @@ final class HomeView: UIView {
             log.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -10)
         ])
 
-        // Push left & right stacks toward the bottom so the upper-center SUBIN-IOS artwork breathes cleanly.
+        // Push left & right panels slightly downward so center hero artwork breathes cleanly.
         let leftSpacer = UIView()
         let rightSpacer = UIView()
         leftColumn.insertArrangedSubview(leftSpacer, at: 0)
@@ -230,13 +243,13 @@ final class HomeView: UIView {
     }
 
     private func buildFilesCard() {
-        let panel = Theme.panel(cornerRadius: 14)
+        let panel = Theme.panel(cornerRadius: 14, stroke: Theme.neonPurple.withAlphaComponent(0.32))
         panel.isUserInteractionEnabled = false
         pin(panel, to: filesCard)
 
         filesIcon.contentMode = .scaleAspectFit
-        filesIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
-        filesTitle.font = Theme.body(14, .bold)
+        filesIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 19, weight: .semibold)
+        filesTitle.font = Theme.body(13, .bold)
         filesTitle.textColor = Theme.text
         filesDetail.font = Theme.body(11)
         filesDetail.textColor = Theme.secondaryText
@@ -260,7 +273,7 @@ final class HomeView: UIView {
                 view.centerYAnchor.constraint(equalTo: iconHolder.centerYAnchor)
             ])
         }
-        iconHolder.widthAnchor.constraint(equalToConstant: 26).isActive = true
+        iconHolder.widthAnchor.constraint(equalToConstant: 24).isActive = true
 
         let row = UIStackView(arrangedSubviews: [iconHolder, texts, chevron])
         row.spacing = 10
@@ -271,8 +284,8 @@ final class HomeView: UIView {
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: filesCard.leadingAnchor, constant: 12),
             row.trailingAnchor.constraint(equalTo: filesCard.trailingAnchor, constant: -12),
-            row.topAnchor.constraint(equalTo: filesCard.topAnchor, constant: 10),
-            row.bottomAnchor.constraint(equalTo: filesCard.bottomAnchor, constant: -10)
+            row.topAnchor.constraint(equalTo: filesCard.topAnchor, constant: 9),
+            row.bottomAnchor.constraint(equalTo: filesCard.bottomAnchor, constant: -9)
         ])
         filesCard.accessibilityTraits = .button
         filesCard.isAccessibilityElement = true
@@ -317,7 +330,7 @@ final class HomeView: UIView {
             let selected = i == index
             chip.isEnabled = enabled
             chip.configuration?.baseForegroundColor = selected ? Theme.accent : Theme.text
-            chip.configuration?.background.backgroundColor = selected ? Theme.accent.withAlphaComponent(0.18) : UIColor(white: 1, alpha: 0.1)
+            chip.configuration?.background.backgroundColor = selected ? Theme.accent.withAlphaComponent(0.20) : UIColor(white: 1, alpha: 0.1)
             chip.configuration?.background.strokeColor = selected ? Theme.accent : .clear
             chip.configuration?.background.strokeWidth = selected ? 1.5 : 0
             chip.accessibilityTraits = selected ? [.button, .selected] : .button
@@ -348,39 +361,82 @@ final class HomeView: UIView {
 private final class PaddedBadge: UIView {
     init(text: String, accent: UIColor) {
         super.init(frame: .zero)
-        backgroundColor = accent.withAlphaComponent(0.14)
+        backgroundColor = accent.withAlphaComponent(0.16)
         layer.cornerRadius = 10
         layer.borderWidth = 1
-        layer.borderColor = accent.withAlphaComponent(0.45).cgColor
+        layer.borderColor = accent.withAlphaComponent(0.50).cgColor
         let label = UILabel()
         label.text = text
         label.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
-        label.textColor = accent
+        label.textColor = Theme.softPink
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            label.topAnchor.constraint(equalTo: topAnchor, constant: 4),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4)
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3)
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 }
 
 private final class ModeCard: UIControl {
-    private let panel = Theme.panel(cornerRadius: 13)
+    private let panel = Theme.panel(cornerRadius: 14)
+    private let artView = UIImageView()
+    private let artScrim: GradientView
     private let icon = UIImageView()
     private let label = UILabel()
+    private let activeTag = UILabel()
 
-    init(title: String, symbol: String) {
+    init(title: String, symbol: String, artwork: String?) {
+        artScrim = GradientView(
+            colors: [
+                UIColor(red: 0.08, green: 0.02, blue: 0.14, alpha: 0.48),
+                UIColor(red: 0.04, green: 0.015, blue: 0.08, alpha: 0.90)
+            ],
+            locations: [0, 1],
+            horizontal: false
+        )
         super.init(frame: .zero)
         panel.isUserInteractionEnabled = false
         panel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(panel)
-        icon.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold))
+
+        if let artwork, let img = UIImage(named: artwork) {
+            artView.image = img
+            artView.contentMode = .scaleAspectFill
+            artView.clipsToBounds = true
+            artView.alpha = 0.60
+            artView.translatesAutoresizingMaskIntoConstraints = false
+            panel.contentView.addSubview(artView)
+            artScrim.translatesAutoresizingMaskIntoConstraints = false
+            panel.contentView.addSubview(artScrim)
+            NSLayoutConstraint.activate([
+                artView.leadingAnchor.constraint(equalTo: panel.contentView.leadingAnchor),
+                artView.trailingAnchor.constraint(equalTo: panel.contentView.trailingAnchor),
+                artView.topAnchor.constraint(equalTo: panel.contentView.topAnchor),
+                artView.bottomAnchor.constraint(equalTo: panel.contentView.bottomAnchor),
+                artScrim.leadingAnchor.constraint(equalTo: panel.contentView.leadingAnchor),
+                artScrim.trailingAnchor.constraint(equalTo: panel.contentView.trailingAnchor),
+                artScrim.topAnchor.constraint(equalTo: panel.contentView.topAnchor),
+                artScrim.bottomAnchor.constraint(equalTo: panel.contentView.bottomAnchor)
+            ])
+        }
+
+        activeTag.text = "ACTIVE"
+        activeTag.font = .monospacedSystemFont(ofSize: 8.5, weight: .black)
+        activeTag.textColor = Theme.night
+        activeTag.backgroundColor = Theme.accent
+        activeTag.textAlignment = .center
+        activeTag.layer.cornerRadius = 5
+        activeTag.clipsToBounds = true
+        activeTag.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(activeTag)
+
+        icon.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold))
         label.text = title
-        label.font = Theme.display(13, .bold)
+        label.font = Theme.display(13, .heavy)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.8
         let row = UIStackView(arrangedSubviews: [icon, label])
@@ -394,10 +450,14 @@ private final class ModeCard: UIControl {
             panel.trailingAnchor.constraint(equalTo: trailingAnchor),
             panel.topAnchor.constraint(equalTo: topAnchor),
             panel.bottomAnchor.constraint(equalTo: bottomAnchor),
-            row.centerXAnchor.constraint(equalTo: centerXAnchor),
-            row.centerYAnchor.constraint(equalTo: centerYAnchor),
-            row.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 8),
-            heightAnchor.constraint(equalToConstant: 40)
+            activeTag.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            activeTag.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            activeTag.widthAnchor.constraint(equalToConstant: 42),
+            activeTag.heightAnchor.constraint(equalToConstant: 14),
+            row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            row.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
+            row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
+            heightAnchor.constraint(equalToConstant: 62)
         ])
         isAccessibilityElement = true
         accessibilityLabel = title
@@ -415,15 +475,17 @@ private final class ModeCard: UIControl {
     }
 
     private func update() {
-        let color = isSelected ? Theme.accent : Theme.text
-        icon.tintColor = color
+        let color = isSelected ? Theme.softPink : Theme.text
+        icon.tintColor = isSelected ? Theme.accent : Theme.text
         label.textColor = isEnabled ? color : Theme.tertiaryText
+        activeTag.isHidden = !isSelected
+        artView.alpha = isSelected ? 0.72 : 0.42
         UIView.animate(withDuration: 0.18, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
             self.panel.contentView.backgroundColor = self.isSelected
-                ? Theme.accent.withAlphaComponent(0.14)
-                : UIColor(red: 0.045, green: 0.070, blue: 0.145, alpha: 0.55)
+                ? Theme.accent.withAlphaComponent(0.16)
+                : UIColor(red: 0.055, green: 0.024, blue: 0.098, alpha: 0.65)
         }
-        panel.layer.borderColor = (isSelected ? Theme.accent : Theme.panelStroke).cgColor
+        panel.layer.borderColor = (isSelected ? Theme.accent : Theme.neonPurple.withAlphaComponent(0.32)).cgColor
         panel.layer.borderWidth = isSelected ? 1.8 : 1
         accessibilityTraits = isSelected ? [.button, .selected] : .button
     }
