@@ -39,7 +39,7 @@ enum ControlStyle {
         "mic": "mic.fill", "mic_muted": "mic.slash.fill", "buy_weapon": "cart.fill",
         "tow_hook": "car.side.rear.tow.hitch.fill", "tow_arm_up": "arrow.up.to.line", "tow_arm_down": "arrow.down.to.line", "roof": "convertible.side.arrowtriangle.up.arrowtriangle.down.fill",
         "steer_left": "arrowtriangle.left.fill", "steer_right": "arrowtriangle.right.fill",
-        "phone_option": "circle.grid.3x3.fill", "taxi_hurry": "hare.fill", "taxi_stop": "stop.fill",
+        "phone_option": "circle.grid.3x3.fill", "menu_apply": "checkmark.seal.fill", "taxi_hurry": "hare.fill", "taxi_stop": "stop.fill",
         "missile": "flame.fill"]
     /// iOS 15-17 have no tow hitch or convertible symbols (they came in iOS 18).
     static let olderSymbol: [String: String] = [
@@ -361,6 +361,7 @@ final class TouchControlsView: UIView {
     private let right = ControlButton("right", icon: "right", label: "Right")
     private let accept = ControlButton("accept", icon: "accept", label: "Select")
     private let back = ControlButton("back", icon: "back", label: L10n.text("Back"))
+    private let menuApply = ControlButton("menu_apply", icon: "menu_apply", label: "Áp dụng / Xác nhận (X)")
     private let tabLeft = ControlButton("tabLeft", icon: "tab_left", label: "Previous tab")
     private let tabRight = ControlButton("tabRight", icon: "tab_right", label: "Next tab")
     // The phone's X: keypad for a custom number (cheats) and the phone's other options.
@@ -374,7 +375,7 @@ final class TouchControlsView: UIView {
          weaponPrev, weaponNext, gas, brake, handbrake, steerLeft, steerRight, driveBy, horn, lookBack,
          vehicleWeapon, towHook, towArmUp, towArmDown, roof, dive, surface, airFire, gear, throttleUp, throttleDown, yawLeft, yawRight, camera, phone, pause, settings, cheat,
          speaker, mic, buyWeapon, lights, radio,
-         up, down, left, right, accept, back, phoneOption, taxiHurry, taxiStop, tabLeft, tabRight]
+         up, down, left, right, accept, back, menuApply, phoneOption, taxiHurry, taxiStop, tabLeft, tabRight]
     }
     private var visible: [ControlButton] = []
 
@@ -449,12 +450,12 @@ final class TouchControlsView: UIView {
         let isSandbox = (GameSettings.shared.gameMode == .sandbox)
         let onlineButtons: [ControlButton] = online ? [speaker, mic, buyWeapon] : (isSandbox ? [] : [cheat])
         let utility: [ControlButton] = context.driving ? [radio, lights, camera, phone, pause, settings] + onlineButtons : [camera, phone, pause, settings] + onlineButtons
-        if context == .menu { return [pause, settings] + onlineButtons + [up, down, left, right, accept, back, tabLeft, tabRight] }
+        if context == .menu { return [pause, settings] + onlineButtons + [up, down, left, right, accept, back, menuApply, tabLeft, tabRight] }
         if phoneDock { return [camera, phone, pause, settings] + onlineButtons + [up, down, left, right, accept, back, phoneOption] }
         // A prompt (Mission failed, warning screens) waits for Accept/Back; play controls do nothing then.
         // Shop menus (Ammu-Nation, clothes, Los Santos Customs) also lock player control and need the
         // D-pad to move through the items.
-        if promptActive && !editing { return [camera, pause, settings] + onlineButtons + [up, down, left, right, accept, back] }
+        if promptActive && !editing { return [camera, pause, settings] + onlineButtons + [up, down, left, right, accept, back, menuApply] }
         // A taxi ride: the destination menu takes left/right to change and Select to choose.
         if taxiRide && !editing {
             return [camera, phone, pause, settings] + onlineButtons + [radio, left, right, accept, taxiHurry, taxiStop, enter, lookBack]
@@ -633,6 +634,7 @@ final class TouchControlsView: UIView {
         place(left, 0.12 - stepX, 0.70, 52)
         place(right, 0.12 + stepX, 0.70, 52)
         place(accept, 0.905, 0.70, 68)
+        place(menuApply, 0.905, 0.49, 58)
         place(back, 0.765, 0.84, 56)
         place(phoneOption, 0.765, 0.56, 56)
         place(taxiHurry, 0.765, 0.52, 58)
@@ -1163,6 +1165,7 @@ final class TouchControlsView: UIView {
         }
         if accept.pressed { held.insert(.a) }
         if back.pressed { held.insert(.b) }
+        if menuApply.pressed { held.insert(.x) }
         if phoneOption.pressed { held.insert(.x) }
         if taxiHurry.pressed { held.insert(.x) }
         if taxiStop.pressed { held.insert(.b) }
