@@ -23,14 +23,25 @@ def sha256(path):
 
 engine = mirror / 'b/8b0b5899ed/game.wasm'
 index = mirror / 'b/8b0b5899ed/shaders/index.json'
-for required in [engine, mirror / 'data/manifest.json', index]:
+generated = Path(__file__).resolve().parents[1] / 'GeneratedResources'
+has_precompiled_shaders = (
+    (generated / 'shaders-iphoneos.metallib').is_file()
+    and (generated / 'shaders-iphoneos.metallib').stat().st_size > 0
+    and (generated / 'shader-reflection.jsonl').is_file()
+    and (generated / 'shader-reflection.jsonl').stat().st_size > 0
+)
+required_paths = [engine, mirror / 'data/manifest.json']
+if not has_precompiled_shaders:
+    required_paths.append(index)
+for required in required_paths:
     if not required.exists():
         sys.exit(f'Missing {required.relative_to(mirror)} in {mirror}. Use the folder that contains data/ and b/.')
 if sha256(engine) != ENGINE_SHA256:
     sys.exit('Your game.wasm is not the build this port supports (8b0b5899ed).')
-if sha256(index) != SHADER_INDEX_SHA256:
-    sys.exit('Your shader index does not match game build 8b0b5899ed.')
-for pack in json.loads(index.read_text())['_packs']:
-    if not (index.parent / pack['file']).exists():
-        sys.exit(f"Missing shader pack {pack['file']} next to the shader index.")
+if not has_precompiled_shaders:
+    if sha256(index) != SHADER_INDEX_SHA256:
+        sys.exit('Your shader index does not match game build 8b0b5899ed.')
+    for pack in json.loads(index.read_text())['_packs']:
+        if not (index.parent / pack['file']).exists():
+            sys.exit(f"Missing shader pack {pack['file']} next to the shader index.")
 print('Game files OK.')
