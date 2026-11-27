@@ -125,10 +125,37 @@ static bool nativeProcessHeadroom(uint64_t *headroom){
  *headroom=available;
  return true;
 }
+// Dynamically scale streaming headroom reserve and band to match 4 GB / 6 GB / 8 GB+ RAM tiers.
+static void pg_streaming_tier_params(uint64_t *reserveMB, uint64_t *bandMB) {
+  uint64_t limit = processLimitMB;
+  if (!limit) {
+    uint64_t phys = 0; size_t sz = sizeof phys;
+    if (sysctlbyname("hw.memsize", &phys, &sz, NULL, 0) == 0) limit = phys >> 20;
+  }
+  if (limit > 0 && limit <= 3200) {
+    *reserveMB = 256; *bandMB = 192; // 4 GB tier: maximize usable budget while keeping Jetsam margin
+  } else if (limit > 0 && limit <= 4600) {
+    *reserveMB = 320; *bandMB = 192; // 6 GB / 4096 MB-limit tier: reduce unnecessary mid-drive evictions
+  } else {
+    *reserveMB = 384; *bandMB = 256; // 8 GB+ / expanded-memory tier
+  }
+}
+uint64_t PGProcessMemoryLimitMB(void) {
+  if (processLimitMB) return processLimitMB;
+#if !TARGET_OS_SIMULATOR
+  task_vm_info_data_t info = {}; mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+  if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count) == KERN_SUCCESS) {
+    return (os_proc_available_memory() + info.phys_footprint) >> 20;
+  }
+#endif
+  return 0;
+}
 uint64_t pg_streaming_available_memory(uint64_t engineAvailable){
  uint64_t available;
  if(!nativeProcessHeadroom(&available))return engineAvailable;
- uint64_t result=pg_streaming_headroom_budget(engineAvailable,available,384ull*1048576,256ull*1048576);
+ uint64_t reserveMB = 384, bandMB = 256;
+ pg_streaming_tier_params(&reserveMB, &bandMB);
+ uint64_t result=pg_streaming_headroom_budget(engineAvailable,available,reserveMB*1048576ull,bandMB*1048576ull);
  return result;
 }
 // The engine heap has its own ceiling (the reservation), below the process limit on phones that
@@ -147,7 +174,9 @@ static int64_t heapCeilingBudget(int64_t result){
 uint64_t pg_streaming_resource_memory(uint64_t engineAvailable){
  uint64_t available;
  int64_t result=(int64_t)engineAvailable;
- if(nativeProcessHeadroom(&available))result=pg_streaming_resource_budget((int64_t)engineAvailable,available,384ull*1048576,256ull*1048576);
+ uint64_t reserveMB = 384, bandMB = 256;
+ pg_streaming_tier_params(&reserveMB, &bandMB);
+ if(nativeProcessHeadroom(&available))result=pg_streaming_resource_budget((int64_t)engineAvailable,available,reserveMB*1048576ull,bandMB*1048576ull);
  result=heapCeilingBudget(result);
  if(result<(int64_t)engineAvailable&&result<=0)atomic_fetch_add(result<0?&memoryBudgetEvictions:&memoryBudgetClamps,1);
  return (uint64_t)result;
@@ -187,7 +216,8 @@ u64 pg_video_memory(u64 reported){
  const char *configured=getenv("PG_VIDEO_MEMORY_MB");
  if(configured)mb=(uint64_t)atol(configured);
  else if(processLimitMB){
-  uint64_t textures=processLimitMB>2048+512?processLimitMB-2048:512;
+  uint64_t baseReserve = processLimitMB <= 3200 ? 1700 : processLimitMB <= 4600 ? 1920 : 2048;
+  uint64_t textures = processLimitMB > baseReserve + 512 ? processLimitMB - baseReserve : 512;
   mb=PGGPUReadsBC()?textures:textures/2;
   if(mb<640)mb=640;
  }
@@ -1304,15 +1334,15 @@ void PGEmergencyExitVehicle(int mode) {
 static void pg_process_vehicle_exit(w2c_game *instance) {
   int mode = atomic_exchange(&pg_emergency_exit_mode, 0);
   if (!mode) return;
+  uint64_t previous = pg_enter_script(instance, true);
   uint32_t ped = mg_call_u32(instance, "mp:PlayerPedId", NULL, 0);
-  if (!ped) return;
+  if (!ped) { pg_test_leave_script(instance, previous); return; }
   MugoatValue inVehArgs[2] = { mg_u32(ped), mg_u32(0) };
-  if (!mg_call_u32(instance, "mp:IsPedInAnyVehicle", inVehArgs, 2)) return;
+  if (!mg_call_u32(instance, "mp:IsPedInAnyVehicle", inVehArgs, 2)) { pg_test_leave_script(instance, previous); return; }
   MugoatValue getVehArgs[2] = { mg_u32(ped), mg_u32(0) };
   uint32_t veh = mg_call_u32(instance, "mp:GetVehiclePedIsIn", getVehArgs, 2);
-  if (!veh) return;
+  if (!veh) { pg_test_leave_script(instance, previous); return; }
 
-  uint64_t previous = pg_test_enter_script(instance);
   if (mode == 2) {
     // Aircraft Bailout / Parachute Jump
     // Give parachute weapon (0xFBAB5776 = GADGET_PARACHUTE) so player can safely parachute down
@@ -1996,7 +2026,10 @@ static void *boot(void *ignored) {
   const char *limit=getenv("PG_STREAM_MEMORY_LIMIT_MB");
   if(limit){char *end;unsigned long mb=strtoul(limit,&end,10);if(end!=limit&&!*end&&mb>=2048&&mb<=8192)simulatedProcessLimit=(uint64_t)mb*1048576;}
 #endif
-  if(nativeMemoryGuard)pg_log("Native streaming memory guard enabled with 384 MB of reserve.");
+  uint64_t reserveMB = 384, bandMB = 256;
+  (void)pg_engine_memory_mb();
+  pg_streaming_tier_params(&reserveMB, &bandMB);
+  if(nativeMemoryGuard){char gl[96];snprintf(gl,sizeof gl,"Native streaming memory guard enabled with %llu MB of reserve.",(unsigned long long)reserveMB);pg_log(gl);}
   pg_assets_prewarm();
   const char *configuredCores = getenv("PG_ENGINE_CORES");
   if (configuredCores && *configuredCores) {
@@ -2013,7 +2046,6 @@ static void *boot(void *ignored) {
   wasm_rt_init();
   // Sets the app memory limit (and the optional cap) used for the engine's video memory budget
   // (pg_video_memory); Mugoat keeps reserving the device RAM below.
-  (void)pg_engine_memory_mb();
   uint64_t physicalMemory=0;size_t physicalMemorySize=sizeof physicalMemory;
   if(sysctlbyname("hw.memsize",&physicalMemory,&physicalMemorySize,NULL,0)!=0)pg_log("Physical RAM query failed; using the engine's declared maximum address space.");
   // Automatic RAM sizing: defaults to full physical RAM. If iOS refuses a large reservation
@@ -2022,7 +2054,7 @@ static void *boot(void *ignored) {
   uint64_t sizingBytes=configuredEngineMB?configuredEngineMB*1048576:physicalMemory;
   if(configuredEngineMB){char line[128];snprintf(line,sizeof line,"RAM for the game configured: %llu MB (device %llu MB).",(unsigned long long)configuredEngineMB,(unsigned long long)(physicalMemory/1048576));pg_log(line);}
   PGEngineMemory memoryConfiguration=pg_engine_memory(sizingBytes,wasm2c_game_pagesize_env_memory);
-  char memoryLog[256];snprintf(memoryLog,sizeof memoryLog,"Device RAM: %llu MB; engine virtual capacity: %llu MB; initial logical heap: %llu MB. Native streaming RAM clamp active with 384 MB headroom reserve.",physicalMemory/1048576,memoryConfiguration.maximumPages*wasm2c_game_pagesize_env_memory/1048576,memoryConfiguration.initialPages*wasm2c_game_pagesize_env_memory/1048576);pg_log(memoryLog);
+  char memoryLog[256];snprintf(memoryLog,sizeof memoryLog,"Device RAM: %llu MB; engine virtual capacity: %llu MB; initial logical heap: %llu MB. Native streaming RAM clamp active with %llu MB headroom reserve.",physicalMemory/1048576,memoryConfiguration.maximumPages*wasm2c_game_pagesize_env_memory/1048576,memoryConfiguration.initialPages*wasm2c_game_pagesize_env_memory/1048576,(unsigned long long)reserveMB);pg_log(memoryLog);
 #if defined(PG_HAS_ARM64_SHARED_VECTORS) && !defined(PG_SHARED_SIMD_BYTEWISE)
   pg_log("Shared vector memory uses native ARM64 instructions with bounds checks.");
 #else
@@ -2144,10 +2176,13 @@ static _Thread_local const char *indirectFunction;
 static _Thread_local uint32_t indirectIndex,indirectSize;
 void pg_note_call_indirect(const char *function,uint32_t index,uint32_t size){indirectFunction=function;indirectIndex=index;indirectSize=size;}
 void pg_record_trap(int code) {
-  void *frames[20];int count=backtrace(frames,20);char line[160];
-  snprintf(line,sizeof line,"Native trap %d; app image base %p",code,_dyld_get_image_header(0));pg_log(line);
-  // Names the engine function (w2c_game_fN) for an invalid indirect call, which native frames can't do.
-  if(code==WASM_RT_TRAP_CALL_INDIRECT&&indirectFunction){snprintf(line,sizeof line,"  indirect call in %s, table index %u of %u",indirectFunction,indirectIndex,indirectSize);pg_log(line);}
+  void *frames[20];int count=backtrace(frames,20);char line[256];
+  if(code==WASM_RT_TRAP_CALL_INDIRECT&&indirectFunction){
+    snprintf(line,sizeof line,"Native trap %d (%s, index %u/%u); app image base %p",code,indirectFunction,indirectIndex,indirectSize,_dyld_get_image_header(0));
+  }else{
+    snprintf(line,sizeof line,"Native trap %d; app image base %p",code,_dyld_get_image_header(0));
+  }
+  pg_log(line);
   for(int i=0;i<count;i++){snprintf(line,sizeof line,"  native frame %d: %p",i,frames[i]);pg_log(line);}
 }
 

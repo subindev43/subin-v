@@ -75,7 +75,7 @@ struct DeviceTier {
 
     /// Recommend from the device's actual RAM; all presets remain selectable.
     var recommended: GraphicsPreset {
-        physicalMemoryMB < 3400 ? .battery : physicalMemoryMB < 4600 ? .performance : physicalMemoryMB < 6000 ? .balanced : physicalMemoryMB < 8000 ? .quality : physicalMemoryMB < 12000 ? .ultra : .max
+        physicalMemoryMB < 3400 ? .battery : physicalMemoryMB < 4600 ? .performance : physicalMemoryMB < 6400 ? .balanced : physicalMemoryMB < 10000 ? .quality : physicalMemoryMB < 12000 ? .ultra : .max
     }
     /// Every preset can be chosen; those above the recommended one show a warning.
     var allowed: [GraphicsPreset] { GraphicsPreset.allCases }

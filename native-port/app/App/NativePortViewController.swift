@@ -259,8 +259,11 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         // Only a run that started the game replaces it, so opening the app a few times after a crash
         // (without playing) doesn't push the crash out.
         let previous = directory.appendingPathComponent("native-port-previous.log")
-        let lastRunPlayed = ((try? FileManager.default.attributesOfItem(atPath: logFile!.path)[.size] as? NSNumber)?.intValue ?? 0) > 16_384
-        if lastRunPlayed || !FileManager.default.fileExists(atPath: previous.path) {
+        let logSize = (try? FileManager.default.attributesOfItem(atPath: logFile!.path)[.size] as? NSNumber)?.intValue ?? 0
+        let lastHadCrash = logSize > 0 && ((try? String(contentsOf: logFile!, encoding: .utf8))?.contains("Native trap") == true
+            || (try? String(contentsOf: logFile!, encoding: .utf8))?.contains("Native boot stopped") == true
+            || (try? String(contentsOf: logFile!, encoding: .utf8))?.contains("NATIVE CRASH") == true)
+        if logSize > 16_384 || lastHadCrash || !FileManager.default.fileExists(atPath: previous.path) {
             try? FileManager.default.removeItem(at: previous)
             try? FileManager.default.moveItem(at: logFile!, to: previous)
         }

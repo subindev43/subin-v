@@ -150,7 +150,8 @@ final class GameSettings {
     var frameRateCap: Int {
         get {
             if let cap = defaults.object(forKey: "frameRateCap") as? Int, [0, 30, 60].contains(cap) { return cap }
-            return defaults.bool(forKey: "sixtyFPS") ? 60 : 30 // older versions stored a 60 FPS switch
+            if defaults.object(forKey: "sixtyFPS") != nil { return defaults.bool(forKey: "sixtyFPS") ? 60 : 30 }
+            return tier.physicalMemoryMB >= 5400 ? 60 : 30
         }
         set { defaults.set(newValue, forKey: "frameRateCap") }
     }

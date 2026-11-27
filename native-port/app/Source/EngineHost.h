@@ -23,6 +23,8 @@ void PGConfigureEngine(const char *const *quality, unsigned count, int width, in
 void PGSetFrameLimit(int frameLimit);
 // Settings › Memory cap in MB (0 automatic); call before the engine starts.
 void PGSetMemoryCap(int mb);
+// Actual OS process memory ceiling in MB (0 if unavailable).
+uint64_t PGProcessMemoryLimitMB(void);
 // RAM the game may reserve, in MB (Settings › Graphics › RAM for the game). 0: the device's full RAM.
 // Clamped to the engine's 3072..16384 MB. Call before PGStartEngine.
 void PGSetEngineMemoryMB(int mb);

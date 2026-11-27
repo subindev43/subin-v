@@ -635,7 +635,9 @@ final class SettingsViewController: UITableViewController {
     }
     private func ramCell(_ cell: UITableViewCell, _ content: inout UIListContentConfiguration) {
         content.text = L10n.text("RAM cho game")
-        content.secondaryText = L10n.text("Mặc định dùng toàn bộ RAM máy. Nếu không vào được game (lỗi \"iOS could not reserve the engine memory\") hoặc game hay văng, chọn mức thấp hơn. Tối thiểu 3 GB. Áp dụng ở lần vào game sau.")
+        let osLimit = PGProcessMemoryLimitMB()
+        let limitNote = osLimit > 0 ? "\n• Trần iOS cấp cho bản cài hiện tại: ~\(String(format: "%.1f", Double(osLimit) / 1024)) GB (\(osLimit) MB)." : ""
+        content.secondaryText = L10n.text("Mặc định tự kích hoạt toàn bộ RAM máy (4 GB → 4 GB, 6 GB → 6 GB, 8 GB → 8 GB+). Chỉ giảm xuống nếu không vào được game hoặc thiếu RAM. Áp dụng ở lần vào game sau.") + limitNote
         let button = UIButton(type: .system)
         button.setTitle(ramTitle(settings.engineMemoryMB) + " ▾", for: .normal)
         button.showsMenuAsPrimaryAction = true
