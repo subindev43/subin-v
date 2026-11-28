@@ -90,6 +90,7 @@ bool loadShaderLibrary(id<MTLDevice> device) {
 		for (NSArray *r in o[@"res"]) {
 			ResBinding b{};
 			b.kind = resKind(r[0]);
+			if (b.kind == RSampler) info->hasSamplers = true;
 			b.binding = [r[1] unsignedShortValue];
 			b.index = [r[2] unsignedCharValue];
 			b.dim = texDim(r[3]);
@@ -160,9 +161,10 @@ id<MTLFunction> shaderFunction(ShaderInfo *info) {
 static const uint32_t BIND_DS = 0x40;
 
 bool gNativeBC = false;
+bool gCompressedETC2 = false;
 bool gPackedBC1 = false;
 
-FormatInfo mapFormat(uint32_t f, uint32_t bind) {
+FormatInfo mapFormat(uint32_t f, uint32_t bind, uint32_t dim, uint32_t samples) {
 	bool ds = (bind & BIND_DS) != 0;
 	FormatInfo m;
 	switch (f) {
@@ -227,6 +229,14 @@ FormatInfo mapFormat(uint32_t f, uint32_t bind) {
 		case 6: m.format = MTLPixelFormatBC6H_RGBUfloat; break;
 		default: m.format = m.srgb ? MTLPixelFormatBC7_RGBAUnorm_sRGB : MTLPixelFormatBC7_RGBAUnorm; m.alt = m.srgb ? MTLPixelFormatBC7_RGBAUnorm : MTLPixelFormatBC7_RGBAUnorm_sRGB;
 		}
+	} else if (m.bc && gCompressedETC2 && m.bc != 6 && dim != 3 && samples == 1 && !(bind & (0x20 | 0x40 | 0x80))) {
+		m.bcETC2 = true;
+		switch (m.bc) {
+		case 1: m.format = m.srgb ? MTLPixelFormatETC2_RGB8A1_sRGB : MTLPixelFormatETC2_RGB8A1; m.alt = m.srgb ? MTLPixelFormatETC2_RGB8A1 : MTLPixelFormatETC2_RGB8A1_sRGB; break;
+		case 4: m.format = MTLPixelFormatEAC_R11Unorm; break;
+		case 5: m.format = MTLPixelFormatEAC_RG11Unorm; break;
+		default: m.format = m.srgb ? MTLPixelFormatEAC_RGBA8_sRGB : MTLPixelFormatEAC_RGBA8; m.alt = m.srgb ? MTLPixelFormatEAC_RGBA8 : MTLPixelFormatEAC_RGBA8_sRGB; break;
+		}
 	} else if (m.bc) {		// decoded on the CPU to an uncompressed format
 		if (m.bc == 1 && f == 71 && gPackedBC1) { m.format = MTLPixelFormatA1BGR5Unorm; return m; }
 		switch (m.bc) {
@@ -251,6 +261,10 @@ MTLPixelFormat viewFormat(uint32_t dxgi, MTLPixelFormat tf) {
 	switch (tf) {
 	case MTLPixelFormatRGBA8Unorm: return m.srgb ? MTLPixelFormatRGBA8Unorm_sRGB : tf;
 	case MTLPixelFormatRGBA8Unorm_sRGB: return m.srgb ? tf : MTLPixelFormatRGBA8Unorm;
+	case MTLPixelFormatETC2_RGB8A1: return m.srgb ? MTLPixelFormatETC2_RGB8A1_sRGB : tf;
+	case MTLPixelFormatETC2_RGB8A1_sRGB: return m.srgb ? tf : MTLPixelFormatETC2_RGB8A1;
+	case MTLPixelFormatEAC_RGBA8: return m.srgb ? MTLPixelFormatEAC_RGBA8_sRGB : tf;
+	case MTLPixelFormatEAC_RGBA8_sRGB: return m.srgb ? tf : MTLPixelFormatEAC_RGBA8;
 	case MTLPixelFormatBGRA8Unorm: return m.srgb ? MTLPixelFormatBGRA8Unorm_sRGB : tf;
 	case MTLPixelFormatBGRA8Unorm_sRGB: return m.srgb ? tf : MTLPixelFormatBGRA8Unorm;
 	case MTLPixelFormatBC1_RGBA: return m.srgb ? MTLPixelFormatBC1_RGBA_sRGB : tf;

@@ -55,7 +55,7 @@ struct ShaderInfo {
 	std::vector<uint32_t> inputs, outputs;
 	uint32_t wg[3] = {1, 1, 1};
 	std::vector<uint32_t> wgMem;
-	bool vid = false, iid = false, immediate = false;
+	bool vid = false, iid = false, immediate = false, hasSamplers = false;
 	std::vector<std::pair<uint32_t, uint32_t>> arrayLengths;		// (Metal buffer index, size index)
 	std::vector<uint32_t> consts;
 	id<MTLBuffer> constBuffer = nil;
@@ -77,8 +77,9 @@ struct Texture : Object {
 	uint32_t dxgi = 0, bind = 0, dim = 2, width = 1, height = 1, depthOrLayers = 1, mips = 1, samples = 1;
 	bool isDepth = false, hasStencil = false, shared = false, floatNoFilter = false;
 	bool alphaView = false;		// A8 render target: stored as R8, sampled through a (0,0,0,R) swizzled view
-	int bcKind = 0;			// 1..7: block-compressed source (decoded on the CPU unless bcNative)
+	int bcKind = 0;			// 1..7: block-compressed source (decoded/transcoded on CPU unless bcNative)
 	bool bcNative = false;		// stored as a Metal BC format: uploads, copies and readbacks use the blocks as they are
+	bool bcETC2 = false;		// transcoded on the CPU to ETC2/EAC blocks (1:1 size with BC on Apple GPUs)
 	bool bcSrgb = false;
 	uint64_t lastUse = 0;		// command buffer serial that last referenced it
 	std::unordered_map<uint64_t, id<MTLTexture>> views;
@@ -135,6 +136,9 @@ struct View : Object {
 	bool isBuf = false;
 	uint32_t fmt = 0, vdim = 0, a = 0, b = 0, c = 0, d = 0, flags = 0;
 	std::unordered_map<uint64_t, id<MTLTexture>> views;
+	uint32_t cachedResId = 0;
+	uint64_t cachedKey = 0;
+	__unsafe_unretained id<MTLTexture> cachedTex = nil;
 };
 
 struct Query : Object {
@@ -152,14 +156,17 @@ struct FormatInfo {
 	int bc = 0;			// BC1..7 source
 	bool srgb = false, a8 = false;
 	bool bcNative = false;		// kept compressed on the GPU (gNativeBC), not decoded on the CPU
+	bool bcETC2 = false;		// transcoded to ETC2/EAC on the CPU (gCompressedETC2)
 };
 // The GPU samples BC1-7 itself (Apple silicon iPads and Macs; not iPhones): BC textures stay
 // compressed, 2 to 8 times smaller than decoded. Set once by the renderer before any texture.
 extern bool gNativeBC;
-// Decoded BC1 (non-sRGB) stored as 16-bit A1BGR5 instead of RGBA8: BC1 has only 1-bit alpha and
-// 5:6:5 colours, so this halves the largest share of decoded texture memory on iPhones.
+// Transcode BC1..5/BC7 to ETC2/EAC on Apple GPUs without native BC hardware support (A16 and older),
+// keeping the exact same 8/16-byte block footprint as native BC.
+extern bool gCompressedETC2;
+// Decoded BC1 (non-sRGB) stored as 16-bit A1BGR5 instead of RGBA8 when ETC2 is disabled.
 extern bool gPackedBC1;
-FormatInfo mapFormat(uint32_t dxgi, uint32_t bind);
+FormatInfo mapFormat(uint32_t dxgi, uint32_t bind, uint32_t dim = 2, uint32_t samples = 1);
 MTLPixelFormat viewFormat(uint32_t dxgi, MTLPixelFormat textureFormat);
 bool isDepthFormat(MTLPixelFormat f);
 bool hasStencil(MTLPixelFormat f);

@@ -211,6 +211,7 @@ static uint64_t pg_engine_memory_mb(void){
 // leaves after about 1.8 GB for the rest of the game and the guard's reserve, halved where BC
 // textures are decoded (in simulator soaks the GPU held about twice what the engine counted).
 int PGGPUReadsBC(void);
+int PGGPUCompressedTextures(void);
 u64 pg_video_memory(u64 reported){
  uint64_t mb=0;
  const char *configured=getenv("PG_VIDEO_MEMORY_MB");
@@ -218,11 +219,11 @@ u64 pg_video_memory(u64 reported){
  else if(processLimitMB){
   uint64_t baseReserve = processLimitMB <= 3200 ? 1700 : processLimitMB <= 4600 ? 1920 : 2048;
   uint64_t textures = processLimitMB > baseReserve + 512 ? processLimitMB - baseReserve : 512;
-  mb=PGGPUReadsBC()?textures:textures/2;
+  mb=PGGPUReadsBC()?textures:(PGGPUCompressedTextures()?(textures*85)/100:textures/2);
   if(mb<640)mb=640;
  }
  if(!mb||(mb<<20)>=reported)return reported;
- char line[160];snprintf(line,sizeof line,"Video memory for the engine: %llu MB (memory limit %llu MB, %s).",(unsigned long long)mb,(unsigned long long)processLimitMB,PGGPUReadsBC()?"GPU reads BC textures":"BC textures decoded");pg_log(line);
+ char line[160];snprintf(line,sizeof line,"Video memory for the engine: %llu MB (memory limit %llu MB, %s).",(unsigned long long)mb,(unsigned long long)processLimitMB,PGGPUReadsBC()?"GPU reads BC textures":(PGGPUCompressedTextures()?"ETC2/EAC compressed textures":"BC textures decoded"));pg_log(line);
  return mb<<20;
 }
 static u32 nativeEngineCores=2;

@@ -21,3 +21,19 @@ int PGGPUReadsBC(void) {
 	if (answer < 0) { id<MTLDevice> device = MTLCreateSystemDefaultDevice(); answer = 0; if (@available(iOS 16.4, *)) answer = device && device.supportsBCTextureCompression && !getenv("PG_FORCE_BC_DECODE"); }
 	return answer;
 }
+int PGGPUCompressedTextures(void) {
+	if (PGGPUReadsBC()) return 1;
+	static int etc2 = -1;
+	if (etc2 < 0) {
+		id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+		etc2 = 0;
+		if (device && !getenv("PG_FORCE_RGBA_DECODE") && [device supportsFamily:MTLGPUFamilyApple3]) {
+			MTLTextureDescriptor *probe = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatEAC_RGBA8 width:4 height:4 mipmapped:NO];
+			probe.usage = MTLTextureUsageShaderRead;
+			probe.storageMode = MTLStorageModeShared;
+			id<MTLTexture> tex = [device newTextureWithDescriptor:probe];
+			etc2 = tex != nil ? 1 : 0;
+		}
+	}
+	return etc2;
+}
