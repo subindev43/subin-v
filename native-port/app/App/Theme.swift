@@ -140,13 +140,13 @@ enum Theme {
         config.image = symbol.map { UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(weight: .heavy)) } ?? nil
         config.imagePadding = 10
         config.cornerStyle = .fixed
-        config.background.cornerRadius = 15
+        config.background.cornerRadius = 14
         config.baseForegroundColor = obsidianDark
         config.background.backgroundColor = UIColor(red: 0.992, green: 0.957, blue: 0.980, alpha: 1) // #FFF4FA
-        config.contentInsets = NSDirectionalEdgeInsets(top: 13, leading: 22, bottom: 13, trailing: 22)
+        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var attributes = attributes
-            attributes.font = display(17, .black)
+            attributes.font = display(15.5, .black)
             return attributes
         }
         let button = PrimaryPlayButton(configuration: config)
@@ -198,20 +198,20 @@ enum Theme {
         var config = UIButton.Configuration.filled()
         config.title = title
         config.subtitle = subtitle
-        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold))
+        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 13.5, weight: .bold))
         config.imagePlacement = .top
-        config.imagePadding = 6
+        config.imagePadding = 5
         config.titleAlignment = .leading
         config.cornerStyle = .fixed
-        config.background.cornerRadius = 15
+        config.background.cornerRadius = 14
         config.background.backgroundColor = artwork != nil ? .clear : UIColor(red: 0.075, green: 0.038, blue: 0.128, alpha: 0.84)
         config.background.strokeColor = highlighted ? tint.withAlphaComponent(0.85) : tint.withAlphaComponent(0.30)
         config.background.strokeWidth = highlighted ? 1.5 : 1
         config.baseForegroundColor = text
-        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 11, bottom: 10, trailing: 11)
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10)
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var a = attributes
-            a.font = display(13, .bold)
+            a.font = display(12, .bold)
             a.foregroundColor = text
             return a
         }

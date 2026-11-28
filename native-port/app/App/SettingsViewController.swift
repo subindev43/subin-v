@@ -243,7 +243,7 @@ final class SettingsViewController: UITableViewController {
             case 7:
                 content.text = L10n.text("Edit controls layout")
                 content.secondaryText = ControlsLayout.isCustomized ? "Customized" : "Move, resize or hide buttons"
-                content.textProperties.color = .systemBlue
+                content.textProperties.color = Theme.accent
             case 1:
                 cell.accessoryView = slider(settings.controlScale, 0.7, 1.5, label: "Button size") { [weak self] in self?.settings.controlScale = $0; self?.controlsChanged?() }
                 content.text = "Button size"
@@ -364,11 +364,11 @@ final class SettingsViewController: UITableViewController {
             } else if indexPath.row == 1 {
                 content.text = L10n.text("Chia sẻ nhật ký hỗ trợ")
                 content.secondaryText = L10n.text("One tap. Helps fix crashes and loading problems")
-                content.textProperties.color = .systemBlue
+                content.textProperties.color = Theme.accent
             } else {
                 content.text = L10n.text("Share log")
                 content.secondaryText = L10n.text("Save or send this run's log and the previous one yourself")
-                content.textProperties.color = .systemBlue
+                content.textProperties.color = Theme.accent
             }
         }
         content.text = content.text.map(L10n.text)

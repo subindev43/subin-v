@@ -1858,8 +1858,9 @@ static void present(uint32_t texId) {
 		if (useUpscale) {
 			int maxW = std::max((int)t->width, upscaleMaxWidth.load(std::memory_order_relaxed));
 			int maxH = std::max((int)t->height, upscaleMaxHeight.load(std::memory_order_relaxed));
-			// Mode 1 (Balanced): ~1.35x crisp super-res capped at display max; Mode 2 (Ultra): full OLED display resolution.
-			double targetH = (uMode >= 2) ? (double)maxH : std::min((double)maxH, std::round((double)t->height * 1.35));
+			// Mode 1 (Balanced): ~1.25x crisp output; Mode 2 (Ultra): ~1.5x (up to 1080p/1290p OLED max) for sharp UI & high FPS.
+			double scaleFactor = (uMode >= 2) ? 1.50 : 1.25;
+			double targetH = std::min((double)maxH, std::round((double)t->height * scaleFactor));
 			double aspect = (double)t->width / (double)t->height;
 			double targetW = std::min((double)maxW, std::round(targetH * aspect));
 			targetH = std::min((double)maxH, std::round(targetW / aspect));
@@ -1878,9 +1879,9 @@ static void present(uint32_t texId) {
 				UpscaleParams params;
 				params.inSize[0] = (float)t->width; params.inSize[1] = (float)t->height;
 				params.outSize[0] = (float)drawable.texture.width; params.outSize[1] = (float)drawable.texture.height;
-				params.sharpness = (uMode >= 2) ? 0.85f : 0.65f;
-				params.vibrance = (uMode >= 2) ? 0.14f : 0.05f;
-				params.contrast = (uMode >= 2) ? 0.07f : 0.02f;
+				params.sharpness = (uMode >= 2) ? 0.44f : 0.30f;
+				params.vibrance = (uMode >= 2) ? 0.10f : 0.04f;
+				params.contrast = (uMode >= 2) ? 0.05f : 0.02f;
 				params.mode = (uint32_t)uMode;
 				[e setRenderPipelineState:R->upscalePipe];
 				[e setFragmentTexture:t->tex atIndex:0];
@@ -2290,23 +2291,22 @@ fragment float4 pg_upscale_dlss(V in [[stage_in]], texture2d<float> t [[texture(
 	float gx = abs(lE - lW), gy = abs(lN - lS);
 	float edgeStrength = clamp(max(gx, gy) * 3.0, 0.0, 1.0);
 	float2 dir = normalize(float2(lN - lS, lE - lW) + 1e-5);
-	float3 dirAvg = 0.5 * (t.sample(s, uv - dir * px * 0.45).rgb + t.sample(s, uv + dir * px * 0.45).rgb);
-	float3 base = mix(cC, dirAvg, (u.mode >= 2 ? 0.35 : 0.2) * edgeStrength);
-	// 2. Robust Contrast-Adaptive Sharpening (RCAS, clamping to local neighborhood to stop ringing).
+	float3 dirAvg = 0.5 * (t.sample(s, uv - dir * px * 0.42).rgb + t.sample(s, uv + dir * px * 0.42).rgb);
+	float3 base = mix(cC, dirAvg, (u.mode >= 2 ? 0.30 : 0.18) * edgeStrength);
+	// 2. Robust Contrast-Adaptive Sharpening (RCAS), damped on steep foliage/silhouette edges to prevent halos.
 	float3 mn = min(min(min(cN, cS), min(cW, cE)), base);
 	float3 mx = max(max(max(cN, cS), max(cW, cE)), base);
 	float3 mn2 = min(mn, min(min(cNW, cNE), min(cSW, cSE)));
 	float3 mx2 = max(mx, max(max(cNW, cNE), max(cSW, cSE)));
 	float3 rmin = 0.5 * (mn + mn2), rmax = 0.5 * (mx + mx2);
 	float3 amp = clamp(min(rmin, 1.0 - rmax) / max(rmax, 1e-4), 0.0, 1.0);
-	amp = sqrt(amp);
-	float3 peak = -1.0 / mix(8.0, 5.0, u.sharpness);
+	float edgeDamp = 1.0 - smoothstep(0.10, 0.36, max(gx, gy));
+	amp = sqrt(amp) * edgeDamp;
+	float3 peak = -1.0 / mix(10.0, 6.0, u.sharpness);
 	float3 w = amp * peak;
 	float3 sharp = clamp((base + (cN + cS + cW + cE) * w) / (1.0 + 4.0 * w), rmin, rmax);
-	// 3. Subtle filmic micro-contrast & OLED vibrance enhancement.
+	// 3. Clean filmic micro-contrast & OLED vibrance without double-unsharp ringing.
 	if (u.mode >= 2) {
-		float3 smoothAvg = 0.25 * (cN + cS + cW + cE);
-		sharp = clamp(sharp + (sharp - smoothAvg) * 0.08, 0.0, 1.0);
 		float lum = pg_luma(sharp);
 		float sCurve = lum * lum * (3.0 - 2.0 * lum);
 		float targetLum = mix(lum, sCurve, u.contrast);

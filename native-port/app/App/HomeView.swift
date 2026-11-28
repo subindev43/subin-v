@@ -158,7 +158,7 @@ final class HomeView: UIView {
         addSubview(log)
 
         let guide = safeAreaLayoutGuide
-        let sideWidth = leftScroll.widthAnchor.constraint(equalTo: guide.widthAnchor, multiplier: 0.37)
+        let sideWidth = leftScroll.widthAnchor.constraint(equalTo: guide.widthAnchor, multiplier: 0.34)
         sideWidth.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
@@ -170,8 +170,8 @@ final class HomeView: UIView {
             leftScroll.topAnchor.constraint(equalTo: topBar.bottomAnchor, constant: 8),
             leftScroll.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
             sideWidth,
-            leftScroll.widthAnchor.constraint(lessThanOrEqualToConstant: 365),
-            leftScroll.widthAnchor.constraint(greaterThanOrEqualToConstant: 235),
+            leftScroll.widthAnchor.constraint(lessThanOrEqualToConstant: 325),
+            leftScroll.widthAnchor.constraint(greaterThanOrEqualToConstant: 225),
 
             leftColumn.leadingAnchor.constraint(equalTo: leftScroll.contentLayoutGuide.leadingAnchor),
             leftColumn.trailingAnchor.constraint(equalTo: leftScroll.contentLayoutGuide.trailingAnchor),
@@ -282,10 +282,10 @@ final class HomeView: UIView {
         row.translatesAutoresizingMaskIntoConstraints = false
         filesCard.addSubview(row)
         NSLayoutConstraint.activate([
-            row.leadingAnchor.constraint(equalTo: filesCard.leadingAnchor, constant: 12),
-            row.trailingAnchor.constraint(equalTo: filesCard.trailingAnchor, constant: -12),
-            row.topAnchor.constraint(equalTo: filesCard.topAnchor, constant: 9),
-            row.bottomAnchor.constraint(equalTo: filesCard.bottomAnchor, constant: -9)
+            row.leadingAnchor.constraint(equalTo: filesCard.leadingAnchor, constant: 11),
+            row.trailingAnchor.constraint(equalTo: filesCard.trailingAnchor, constant: -11),
+            row.topAnchor.constraint(equalTo: filesCard.topAnchor, constant: 7),
+            row.bottomAnchor.constraint(equalTo: filesCard.bottomAnchor, constant: -7)
         ])
         filesCard.accessibilityTraits = .button
         filesCard.isAccessibilityElement = true
@@ -456,8 +456,8 @@ private final class ModeCard: UIControl {
             activeTag.heightAnchor.constraint(equalToConstant: 14),
             row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
             row.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
-            row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
-            heightAnchor.constraint(equalToConstant: 62)
+            row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            heightAnchor.constraint(equalToConstant: 52)
         ])
         isAccessibilityElement = true
         accessibilityLabel = title

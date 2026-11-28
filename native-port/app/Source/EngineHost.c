@@ -234,7 +234,10 @@ u32 w2c_env_wasm_has_page_js(struct w2c_env *host) { return 1; }
 u32 w2c_env_wasm_userdata_page_js(struct w2c_env *host) { return 0; }
 u32 w2c_env_wasm_module_int_js(struct w2c_env *host, u64 address, u32 fallback) {
   const char *key = pg_string(host, address);
-  if (!strcmp(key, "lowMemory")) return 1;
+  if (!strcmp(key, "lowMemory")) {
+    uint64_t limit = PGProcessMemoryLimitMB();
+    return (limit > 0 && limit <= 3200) ? 1 : 0;
+  }
   return fallback;
 }
 void w2c_env_0x5Femscripten_init_main_thread_js(struct w2c_env *host, u64 thread) {

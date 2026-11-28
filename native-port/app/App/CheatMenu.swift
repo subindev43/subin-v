@@ -118,14 +118,14 @@ final class CheatManager {
 }
 
 private enum NeonPalette {
-    static let bg = Color(red: 0.024, green: 0.035, blue: 0.075)
-    static let card = Color(red: 0.060, green: 0.090, blue: 0.180).opacity(0.84)
-    static let cardElevated = Color(red: 0.085, green: 0.125, blue: 0.240).opacity(0.92)
-    static let cyan = Color(red: 0.133, green: 0.827, blue: 0.933)
+    static let bg = Color(red: 0.027, green: 0.016, blue: 0.055)
+    static let card = Color(red: 0.082, green: 0.039, blue: 0.137).opacity(0.86)
+    static let cardElevated = Color(red: 0.118, green: 0.051, blue: 0.196).opacity(0.94)
+    static let cyan = Color(red: 1.000, green: 0.302, blue: 0.651)
     static let purple = Color(red: 0.659, green: 0.333, blue: 0.969)
     static let emerald = Color(red: 0.204, green: 0.827, blue: 0.600)
     static let amber = Color(red: 0.984, green: 0.749, blue: 0.141)
-    static let stroke = Color(red: 0.133, green: 0.827, blue: 0.933).opacity(0.26)
+    static let stroke = Color(red: 1.000, green: 0.302, blue: 0.651).opacity(0.28)
 }
 
 struct CheatMenuView: View {
@@ -177,7 +177,7 @@ struct CheatMenuView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [NeonPalette.bg, Color(red: 0.055, green: 0.045, blue: 0.16), NeonPalette.bg],
+                colors: [NeonPalette.bg, Color(red: 0.125, green: 0.028, blue: 0.180), NeonPalette.bg],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -314,7 +314,7 @@ struct CheatMenuView: View {
                             .font(.caption.bold())
                         Spacer()
                     }
-                    .foregroundColor(active ? Color(red: 0.015, green: 0.08, blue: 0.11) : .white)
+                    .foregroundColor(active ? Color(red: 0.070, green: 0.015, blue: 0.110) : .white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(active ? NeonPalette.cyan : NeonPalette.card)
@@ -427,7 +427,7 @@ struct CheatMenuView: View {
                             apply(c, forcedMode: .console)
                         }
                         .font(.caption.bold())
-                        .foregroundColor(Color(red: 0.015, green: 0.08, blue: 0.11))
+                        .foregroundColor(Color(red: 0.070, green: 0.015, blue: 0.110))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(NeonPalette.cyan)
@@ -467,7 +467,7 @@ struct CheatMenuView: View {
                         spawnVehicle(m)
                     }
                     .font(.caption.bold())
-                    .foregroundColor(Color(red: 0.015, green: 0.08, blue: 0.11))
+                    .foregroundColor(Color(red: 0.070, green: 0.015, blue: 0.110))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(NeonPalette.emerald)
@@ -530,7 +530,7 @@ struct CheatMenuView: View {
             } label: {
                 Text(L10n.text("Bật"))
                     .font(.caption2.bold())
-                    .foregroundColor(Color(red: 0.015, green: 0.08, blue: 0.11))
+                    .foregroundColor(Color(red: 0.070, green: 0.015, blue: 0.110))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(NeonPalette.cyan)
@@ -568,7 +568,7 @@ struct CheatMenuView: View {
             } label: {
                 Text("Gọi xe")
                     .font(.caption2.bold())
-                    .foregroundColor(Color(red: 0.015, green: 0.08, blue: 0.11))
+                    .foregroundColor(Color(red: 0.070, green: 0.015, blue: 0.110))
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
                     .background(accent)

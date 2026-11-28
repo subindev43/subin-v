@@ -504,6 +504,9 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         // game's pause menu or auto-detection (MSAA, TXAA, tessellation, shader quality 2) crash Metal
         // or trigger out-of-memory. Overwrite with a sanitized safe baseline before each launch.
         let presetLevel = bootedPreset.rawValue
+        let texVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 1 : 0
+        let afVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 4 : 0
+        let lodVal = presetLevel >= GraphicsPreset.balanced.rawValue ? "0.500000" : "0.000000"
         let shadowVal = presetLevel >= GraphicsPreset.ultra.rawValue ? 1 : 0
         let reflVal = presetLevel >= GraphicsPreset.quality.rawValue ? 1 : 0
         let reflMipBlur = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
@@ -515,13 +518,13 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
           <version value="27" />
           <configSource>SMC_AUTO</configSource>
           <graphics>
-            <TextureQuality value="0" />
+            <TextureQuality value="\(texVal)" />
             <ShaderQuality value="1" />
             <ShadowQuality value="\(shadowVal)" />
             <ReflectionQuality value="\(reflVal)" />
             <ReflectionMSAA value="0" />
             <SSAO value="0" />
-            <AnisotropicFiltering value="0" />
+            <AnisotropicFiltering value="\(afVal)" />
             <MSAA value="0" />
             <MSAAFragments value="0" />
             <MSAAPostProcess value="0" />
@@ -529,8 +532,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <ParticleQuality value="0" />
             <GrassQuality value="0" />
             <DeepSurfaceQuality value="0" />
-            <PedLodBias value="0.000000" />
-            <VehicleLodBias value="0.000000" />
+            <PedLodBias value="0.200000" />
+            <VehicleLodBias value="0.200000" />
             <Shadow_Distance value="1.000000" />
             <Shadow_SoftShadows value="0" />
             <Shadow_ParticleShadows value="false" />
@@ -544,13 +547,13 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <Lighting_FogVolumes value="false" />
             <Shader_SSA value="false" />
             <DX_Version value="2" />
-            <CityDensity value="0.000000" />
-            <PedVarietyMultiplier value="0.000000" />
-            <VehicleVarietyMultiplier value="0.000000" />
+            <CityDensity value="0.300000" />
+            <PedVarietyMultiplier value="0.300000" />
+            <VehicleVarietyMultiplier value="0.300000" />
             <PostFX value="0" />
             <DoF value="false" />
             <HdStreamingInFlight value="false" />
-            <MaxLodScale value="0.000000" />
+            <MaxLodScale value="\(lodVal)" />
             <MotionBlurStrength value="0.000000" />
           </graphics>
           <system>
@@ -1207,7 +1210,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         label.font = Theme.display(14, .bold)
         label.textColor = Theme.accent
         label.textAlignment = .center
-        label.backgroundColor = UIColor(red: 0.035, green: 0.055, blue: 0.125, alpha: 0.90)
+        label.backgroundColor = UIColor(red: 0.065, green: 0.024, blue: 0.105, alpha: 0.92)
         label.layer.cornerRadius = 15
         label.layer.cornerCurve = .continuous
         label.layer.borderWidth = 1

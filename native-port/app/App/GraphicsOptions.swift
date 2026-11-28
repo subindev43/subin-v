@@ -45,8 +45,8 @@ enum GraphicsPreset: Int, CaseIterable {
             return ["-shaderQuality=1", "-textureQuality=0", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
                     "-grassQuality=0", "-cityDensity=0", "-lodScale=0", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0", "-vehicleVariety=0"]
         case .balanced:
-            return ["-shaderQuality=1", "-textureQuality=0", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
-                    "-grassQuality=0", "-cityDensity=0.1", "-lodScale=0.1", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0.1", "-vehicleVariety=0.1"]
+            return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
+                    "-grassQuality=0", "-cityDensity=0.3", "-lodScale=0.5", "-pedLodBias=0.2", "-vehicleLodBias=0.2", "-pedVariety=0.3", "-vehicleVariety=0.3"]
         case .quality:
             return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=0", "-reflectionQuality=1", "-particleQuality=1",
                     "-grassQuality=1", "-cityDensity=0.4", "-lodScale=0.4", "-pedLodBias=0.2", "-vehicleLodBias=0.2", "-pedVariety=0.4", "-vehicleVariety=0.4"]
