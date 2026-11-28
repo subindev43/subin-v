@@ -8,7 +8,7 @@ final class HomeView: UIView {
     let playButton = Theme.primaryButton(L10n.text("Vào game"), symbol: "play.fill")
     let cheatButton = Theme.tileButton(L10n.text("Menu Cheat"), subtitle: L10n.text("Trainer & Gọi xe"), symbol: "bolt.fill", tint: Theme.accent, highlighted: true, artwork: "CardCheat")
     let modButton = Theme.tileButton(L10n.text("Quản lý Mod"), subtitle: L10n.text("DLC .rpf & Xe mod"), symbol: "cube.box.fill", tint: Theme.neonPurple, artwork: "CardMods")
-    let settingsButton = Theme.tileButton(L10n.text("Đồ họa & FPS"), subtitle: L10n.text("DLSS5 · 120 FPS · RAM"), symbol: "slider.horizontal.3", tint: Theme.accent, artwork: "CardSettings")
+    let settingsButton = Theme.tileButton(L10n.text("Đồ họa & FPS"), subtitle: L10n.text("Metal · 120 FPS · RAM"), symbol: "slider.horizontal.3", tint: Theme.accent, artwork: "CardSettings")
     let layoutButton = Theme.tileButton(L10n.text("Bố trí nút"), subtitle: L10n.text("Cảm ứng & Gyro"), symbol: "hand.tap.fill", tint: Theme.softPink, artwork: "CardLayout")
     let onlineButton = Theme.tileButton(L10n.text("Máy chủ Online"), subtitle: L10n.text("UDP · Voice 3D"), symbol: "network", tint: Theme.neonPurple, artwork: "CardOnline")
     let saveButton = Theme.tileButton(L10n.text("Save game"), subtitle: L10n.text("Sao lưu & Khôi phục"), symbol: "externaldrive.fill", tint: Theme.warning, artwork: "CardSave")

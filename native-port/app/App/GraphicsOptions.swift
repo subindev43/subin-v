@@ -3,25 +3,6 @@ import Metal
 import UIKit
 import os
 
-enum UpscalerMode: Int, CaseIterable {
-    case off = 0, balanced = 1, ultra = 2
-
-    var title: String {
-        switch self {
-        case .off: return L10n.text("Tắt (Gốc)")
-        case .balanced: return L10n.text("DLSS5 · Cân bằng (CAS)")
-        case .ultra: return L10n.text("DLSS5 · Siêu nét (OLED)")
-        }
-    }
-    var detail: String {
-        switch self {
-        case .off: return L10n.text("Xuất khung hình gốc không qua bộ nâng nét")
-        case .balanced: return L10n.text("Nâng nét cạnh RCAS 1.35× · mượt và giữ pin")
-        case .ultra: return L10n.text("Tái tạo cạnh Native OLED + khử răng cưa + màu phim (iPhone 14 Pro Max+)")
-        }
-    }
-}
-
 /// Graphics presets. The engine reads quality settings once at boot; only the
 /// resolution can change while it runs.
 enum GraphicsPreset: Int, CaseIterable {
@@ -46,7 +27,7 @@ enum GraphicsPreset: Int, CaseIterable {
                     "-grassQuality=0", "-cityDensity=0", "-lodScale=0", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0", "-vehicleVariety=0"]
         case .balanced:
             return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
-                    "-grassQuality=0", "-cityDensity=0.3", "-lodScale=0.5", "-pedLodBias=0.2", "-vehicleLodBias=0.2", "-pedVariety=0.3", "-vehicleVariety=0.3"]
+                    "-grassQuality=0", "-cityDensity=0.1", "-lodScale=0.15", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0.1", "-vehicleVariety=0.1"]
         case .quality:
             return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=0", "-reflectionQuality=1", "-particleQuality=1",
                     "-grassQuality=1", "-cityDensity=0.4", "-lodScale=0.4", "-pedLodBias=0.2", "-vehicleLodBias=0.2", "-pedVariety=0.4", "-vehicleVariety=0.4"]
@@ -67,24 +48,19 @@ struct DeviceTier {
     let physicalMemoryMB: Int
     let model: String
     let supportsBCTextures: Bool
-    let supportsDLSSUpscaler: Bool
 
     static func probe() -> DeviceTier {
         var info = utsname(); uname(&info)
         let model = withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
         let device = MTLCreateSystemDefaultDevice()
         let supportsBC: Bool
-        let supportsUpscaler: Bool
         let memMB = Int(ProcessInfo.processInfo.physicalMemory / 1_048_576)
         if #available(iOS 16.4, *) { supportsBC = device?.supportsBCTextureCompression ?? false }
         else { supportsBC = false }
-        if #available(iOS 16.0, *) { supportsUpscaler = (device?.supportsFamily(.apple8) ?? false) && memMB >= 5400 }
-        else { supportsUpscaler = false }
         return DeviceTier(processAllowanceMB: Self.measureProcessAllowanceMB(),
                           physicalMemoryMB: memMB,
                           model: model,
-                          supportsBCTextures: supportsBC,
-                          supportsDLSSUpscaler: supportsUpscaler)
+                          supportsBCTextures: supportsBC)
     }
 
     /// Jetsam limit = memory still available + what the app already uses.
@@ -153,14 +129,6 @@ enum GraphicsConfiguration {
         // Even frame pacing when the cap is below the screen's refresh rate (30 on 60 Hz, 30/60 on 120 Hz).
         let cap = settings.frameRateCap
         PGSetPresentPacing(cap > 0 && cap < UIScreen.main.maximumFramesPerSecond ? 1.0 / Double(cap) : 0)
-        applyUpscaler(settings)
         return "\(preset.title) \(width)×\(height) at \(GameSettings.frameRateTitle(settings.frameRateCap))"
-    }
-
-    static func applyUpscaler(_ settings: GameSettings) {
-        let bounds = UIScreen.main.nativeBounds
-        let nativeW = min(max(Int(max(bounds.width, bounds.height)), 1280), 2880) & ~1
-        let nativeH = min(max(Int(min(bounds.width, bounds.height)), 720), 1440) & ~1
-        PGSetUpscaler(Int32(settings.upscalerMode.rawValue), Int32(nativeW), Int32(nativeH))
     }
 }

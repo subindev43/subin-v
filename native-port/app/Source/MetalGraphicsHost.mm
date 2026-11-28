@@ -9,7 +9,6 @@ extern "C" void pg_log(const char *);
 void PGAttachMetalLayer(void *layer) { PGMetalRendererAttachLayer(layer); }
 double PGRenderedFramesPerSecond(void) { return PGMetalRendererFPS(); }
 void PGSetPresentPacing(double seconds) { PGMetalRendererSetPresentInterval(seconds); }
-void PGSetUpscaler(int mode, int maxWidth, int maxHeight) { PGMetalRendererSetUpscaler(mode, maxWidth, maxHeight); }
 void PGCaptureNativeFrame(const char *name) { PGMetalRendererCapture(name); }
 void PGStartGraphics(void *memory, uint64_t memorySize, uint64_t ring, uint64_t ringSize, uint64_t) {
 	if (!PGMetalRendererAvailable()) { pg_log("The Metal shader library is missing from the app: rebuild with the game's shaders."); return; }
@@ -27,7 +26,7 @@ int PGGPUCompressedTextures(void) {
 	if (etc2 < 0) {
 		id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 		etc2 = 0;
-		if (device && !getenv("PG_FORCE_RGBA_DECODE") && [device supportsFamily:MTLGPUFamilyApple3]) {
+		if (device && getenv("PG_USE_ETC2") && !getenv("PG_FORCE_RGBA_DECODE") && [device supportsFamily:MTLGPUFamilyApple3]) {
 			MTLTextureDescriptor *probe = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatEAC_RGBA8 width:4 height:4 mipmapped:NO];
 			probe.usage = MTLTextureUsageShaderRead;
 			probe.storageMode = MTLStorageModeShared;

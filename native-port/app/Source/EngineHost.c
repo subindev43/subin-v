@@ -237,7 +237,7 @@ u32 w2c_env_wasm_module_int_js(struct w2c_env *host, u64 address, u32 fallback) 
   const char *key = pg_string(host, address);
   if (!strcmp(key, "lowMemory")) {
     uint64_t limit = PGProcessMemoryLimitMB();
-    return (limit > 0 && limit <= 3200) ? 1 : 0;
+    return (limit > 0 && limit <= 3600) ? 1 : 0;
   }
   return fallback;
 }
@@ -2166,6 +2166,7 @@ void PGStartEngine(const char *path, const char *filesRoot, PGLogCallback callba
   pthread_attr_t attributes;
   pthread_attr_init(&attributes);
   pthread_attr_setstacksize(&attributes, 16 * 1024 * 1024);
+  pthread_attr_set_qos_class_np(&attributes, QOS_CLASS_USER_INTERACTIVE, 0);
   pthread_t thread;
   int result = pthread_create(&thread, &attributes, boot, NULL);
   pthread_attr_destroy(&attributes);

@@ -506,7 +506,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         let presetLevel = bootedPreset.rawValue
         let texVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 1 : 0
         let afVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 4 : 0
-        let lodVal = presetLevel >= GraphicsPreset.balanced.rawValue ? "0.500000" : "0.000000"
+        let lodVal = presetLevel >= GraphicsPreset.quality.rawValue ? "0.400000" : presetLevel >= GraphicsPreset.balanced.rawValue ? "0.150000" : "0.000000"
+        let densityVal = presetLevel >= GraphicsPreset.quality.rawValue ? "0.300000" : "0.100000"
         let shadowVal = presetLevel >= GraphicsPreset.ultra.rawValue ? 1 : 0
         let reflVal = presetLevel >= GraphicsPreset.quality.rawValue ? 1 : 0
         let reflMipBlur = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
@@ -532,8 +533,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <ParticleQuality value="0" />
             <GrassQuality value="0" />
             <DeepSurfaceQuality value="0" />
-            <PedLodBias value="0.200000" />
-            <VehicleLodBias value="0.200000" />
+            <PedLodBias value="0.000000" />
+            <VehicleLodBias value="0.000000" />
             <Shadow_Distance value="1.000000" />
             <Shadow_SoftShadows value="0" />
             <Shadow_ParticleShadows value="false" />
@@ -547,9 +548,9 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             <Lighting_FogVolumes value="false" />
             <Shader_SSA value="false" />
             <DX_Version value="2" />
-            <CityDensity value="0.300000" />
-            <PedVarietyMultiplier value="0.300000" />
-            <VehicleVarietyMultiplier value="0.300000" />
+            <CityDensity value="\(densityVal)" />
+            <PedVarietyMultiplier value="\(densityVal)" />
+            <VehicleVarietyMultiplier value="\(densityVal)" />
             <PostFX value="0" />
             <DoF value="false" />
             <HdStreamingInFlight value="false" />
@@ -1327,8 +1328,7 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         let renderHeight = thermalScale < 1 ? Int(Double(chosenHeight) * thermalScale) : settings.renderHeight
         let (width, height) = GraphicsConfiguration.size(for: bootedPreset, renderHeight: renderHeight, screen: view.bounds.size, matchScreenShape: settings.matchScreenShape)
         PGSetBackBufferSize(Int32(width), Int32(height))
-        GraphicsConfiguration.applyUpscaler(settings)
-        appendLog("Graphics: live resize to \(width)×\(height) · \(settings.upscalerMode.title)")
+        appendLog("Graphics: live resize to \(width)×\(height)")
     }
     @objc private func releaseTouchControls() {
         touchControls.reset(publish: false)
