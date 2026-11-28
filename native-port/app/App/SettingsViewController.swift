@@ -207,7 +207,9 @@ final class SettingsViewController: UITableViewController {
                     button.accessibilityLabel = L10n.text("Frame rate")
                     button.menu = UIMenu(children: settings.tier.allowedFrameRates.map { cap in
                         UIAction(title: GameSettings.frameRateTitle(cap), state: cap == settings.frameRateCap ? .on : .off) { [weak self] _ in
-                            self?.settings.frameRateCap = cap; self?.reloadFooters(); self?.tableView.reloadData()
+                            self.settings.frameRateCap = cap
+                            self.reloadFooters()
+                            self.tableView.reloadData()
                         }
                     })
                     button.sizeToFit()
@@ -394,7 +396,11 @@ final class SettingsViewController: UITableViewController {
         let presets = settings.tier.allowed
         guard indexPath.section == Section.graphics.rawValue, indexPath.row < presets.count else { return }
         settings.graphicsPreset = presets[indexPath.row]
-        resolutionChanged?()
+        if engineRunning {
+            let alert = UIAlertController(title: L10n.text("Graphics change"), message: L10n.text("Preset and frame-rate changes will apply after restarting the game. Resolution changes apply now."), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: L10n.text("OK"), style: .default))
+            present(alert, animated: true)
+        }
         UIView.performWithoutAnimation { tableView.reloadSections([Section.graphics.rawValue], with: .none) }
     }
 

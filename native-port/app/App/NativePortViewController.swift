@@ -1325,7 +1325,8 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         guard engineStarted else { return }
         let settings = GameSettings.shared
         let chosenHeight = settings.renderHeight > 0 ? settings.renderHeight : bootedPreset.height
-        let renderHeight = thermalScale < 1 ? Int(Double(chosenHeight) * thermalScale) : settings.renderHeight
+        let maxHeight = settings.tier.maximumRenderHeight
+        let renderHeight = min(maxHeight, thermalScale < 1 ? Int(Double(chosenHeight) * thermalScale) : chosenHeight)
         let (width, height) = GraphicsConfiguration.size(for: bootedPreset, renderHeight: renderHeight, screen: view.bounds.size, matchScreenShape: settings.matchScreenShape)
         PGSetBackBufferSize(Int32(width), Int32(height))
         appendLog("Graphics: live resize to \(width)×\(height)")

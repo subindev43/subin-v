@@ -153,7 +153,7 @@ enum GraphicsConfiguration {
     /// Pass the chosen settings to the engine. Call before PGStartEngine.
     static func apply(_ settings: GameSettings, screen: CGSize) -> String {
         PGSetEngineMemoryMB(Int32(settings.engineMemoryMB))
-        let preset = GraphicsPreset.clamped(settings.graphicsPreset, for: settings.tier)
+        let preset = settings.graphicsPreset
         let requestedHeight = settings.renderHeight > 0 ? settings.renderHeight : preset.height
         let safeHeight = min(requestedHeight, settings.tier.maximumRenderHeight)
         let (width, height) = size(for: preset, renderHeight: safeHeight, screen: screen, matchScreenShape: settings.matchScreenShape)

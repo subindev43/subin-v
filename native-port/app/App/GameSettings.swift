@@ -110,12 +110,14 @@ final class GameSettings {
     lazy var tier = DeviceTier.probe()
     var graphicsPreset: GraphicsPreset {
         get {
-            let requested = defaults.object(forKey: "graphicsPreset") != nil
-                ? GraphicsPreset(rawValue: defaults.integer(forKey: "graphicsPreset")) ?? tier.recommended
-                : tier.recommended
-            return GraphicsPreset.clamped(requested, for: tier)
+            // Presets remain selectable. DeviceTier only supplies the default and
+            // warning state; it must not silently rewrite the player's choice.
+            if defaults.object(forKey: "graphicsPreset") != nil {
+                return GraphicsPreset(rawValue: defaults.integer(forKey: "graphicsPreset")) ?? tier.recommended
+            }
+            return tier.recommended
         }
-        set { defaults.set(GraphicsPreset.clamped(newValue, for: tier).rawValue, forKey: "graphicsPreset") }
+        set { defaults.set(newValue.rawValue, forKey: "graphicsPreset") }
     }
     var resolutionScale: Double {
         get { defaults.object(forKey: "resolutionScale") as? Double ?? 1.0 }
