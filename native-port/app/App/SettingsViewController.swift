@@ -207,6 +207,7 @@ final class SettingsViewController: UITableViewController {
                     button.accessibilityLabel = L10n.text("Frame rate")
                     button.menu = UIMenu(children: settings.tier.allowedFrameRates.map { cap in
                         UIAction(title: GameSettings.frameRateTitle(cap), state: cap == settings.frameRateCap ? .on : .off) { [weak self] _ in
+                            guard let self else { return }
                             self.settings.frameRateCap = cap
                             self.reloadFooters()
                             self.tableView.reloadData()
