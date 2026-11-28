@@ -1317,8 +1317,12 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
             let scale = state == .critical ? 0.65 : state == .serious ? 0.8 : 1.0
             guard scale != self.thermalScale else { return }
             self.thermalScale = scale
-            self.appendLog("Thermal state \(state.rawValue): render resolution ×\(scale)")
-            self.applyLiveResolution()
+            // Do not resize the native swap chain from the thermal notification.
+            // The engine may be inside ResizeBuffers on its render thread; doing
+            // this concurrently caused the SIGSEGV seen after thermal downscale.
+            // The next launch uses the safe preset. Keep the event diagnostic-only
+            // until resize is explicitly serialized with the render thread.
+            self.appendLog("Thermal state \(state.rawValue): automatic resolution downscale deferred until restart")
         }
     }
     private func applyLiveResolution() {
