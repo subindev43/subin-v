@@ -148,18 +148,23 @@ struct ModPack {
                 let model = model.lowercased(); if Self.validName(model) { models.insert(model) }
             }
         }
+        var hasNonModelAssets = false
         for entry in archive.entries where entry.path.hasSuffix(".rpf") {
             let nested = try archive.nested(entry)
-            for resource in nested.entries where resource.path.hasSuffix(".yft") || resource.path.hasSuffix(".ytd") || resource.path.hasSuffix(".ydd") {
-                let expected = resource.path.hasSuffix(".yft") ? 162 : resource.path.hasSuffix(".ytd") ? 13 : 165
-                guard resource.resourceVersion == expected else { throw ModError("Gói \(name) dùng tài nguyên Enhanced không tương thích. Hãy dùng bản Legacy.") }
-                let base = (resource.path as NSString).lastPathComponent.components(separatedBy: ".").first?.lowercased() ?? ""
-                if !base.isEmpty && Self.validName(base) && !base.hasSuffix("_hi") {
-                    models.insert(base)
+            for resource in nested.entries {
+                if resource.path.hasSuffix(".yft") || resource.path.hasSuffix(".ytd") || resource.path.hasSuffix(".ydd") {
+                    let expected = resource.path.hasSuffix(".yft") ? 162 : resource.path.hasSuffix(".ytd") ? 13 : 165
+                    guard resource.resourceVersion == expected else { throw ModError("Gói \(name) dùng tài nguyên Enhanced không tương thích. Hãy dùng bản Legacy.") }
+                    let base = (resource.path as NSString).lastPathComponent.components(separatedBy: ".").first?.lowercased() ?? ""
+                    if !base.isEmpty && Self.validName(base) && !base.hasSuffix("_hi") {
+                        models.insert(base)
+                    }
+                } else if resource.path.hasSuffix(".ymap") || resource.path.hasSuffix(".ytyp") || resource.path.hasSuffix(".ydr") || resource.path.hasSuffix(".ybn") || resource.path.hasSuffix(".ycd") || resource.path.hasSuffix(".ypt") || resource.path.hasSuffix(".meta") || resource.path.hasSuffix(".xml") {
+                    hasNonModelAssets = true
                 }
             }
         }
-        guard !models.isEmpty else { throw ModError("DLC chưa có model xe hoặc nhân vật hợp lệ.") }
+        guard !models.isEmpty || hasNonModelAssets else { throw ModError("DLC chưa có dữ liệu mod hợp lệ.") }
         self.models = models.sorted()
     }
 }

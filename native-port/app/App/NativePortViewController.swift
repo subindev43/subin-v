@@ -500,19 +500,22 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         startAudio()
         let (root, rootNote) = EnginePaths.filesRoot()
         if let rootNote { appendLog(rootNote) }
-        // The game's own settings.xml only holds graphics and display options. Some choices in the
-        // game's pause menu or auto-detection (MSAA, TXAA, tessellation, shader quality 2) crash Metal
-        // or trigger out-of-memory. Overwrite with a sanitized safe baseline before each launch.
+        // The game's own settings.xml holds graphics and display options. Only write the preset baseline
+        // on first launch or when the user changes Mugoat's Graphics preset/FPS; otherwise keep user changes
+        // applied in GTA V's Pause Menu while sanitizing options that crash Metal (ShaderQuality != 1, MSAA, TXAA, DoF).
         let presetLevel = bootedPreset.rawValue
-        let texVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 1 : 0
-        let afVal = presetLevel >= GraphicsPreset.balanced.rawValue ? 4 : 0
-        let lodVal = presetLevel >= GraphicsPreset.quality.rawValue ? "0.400000" : presetLevel >= GraphicsPreset.balanced.rawValue ? "0.150000" : "0.000000"
+        let texVal = presetLevel >= GraphicsPreset.quality.rawValue ? 1 : 0
+        let afVal = presetLevel >= GraphicsPreset.quality.rawValue ? 4 : 0
+        let lodVal = presetLevel >= GraphicsPreset.quality.rawValue ? "0.400000" : presetLevel >= GraphicsPreset.balanced.rawValue ? "0.100000" : "0.000000"
         let densityVal = presetLevel >= GraphicsPreset.quality.rawValue ? "0.300000" : "0.100000"
-        let shadowVal = presetLevel >= GraphicsPreset.ultra.rawValue ? 1 : 0
+        let shadowVal = presetLevel >= GraphicsPreset.ultra.rawValue ? 1 : presetLevel >= GraphicsPreset.quality.rawValue ? 0 : -1
         let reflVal = presetLevel >= GraphicsPreset.quality.rawValue ? 1 : 0
         let reflMipBlur = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
         let fxaaVal = presetLevel >= GraphicsPreset.quality.rawValue ? "true" : "false"
         let vsyncVal = GameSettings.shared.frameRateCap == 0 ? 0 : 1
+        let launcherSig = "\(presetLevel)-\(GameSettings.shared.frameRateCap)"
+        let lastLauncherSig = UserDefaults.standard.string(forKey: "lastLauncherSettingsSig")
+        let launcherPresetChanged = lastLauncherSig != launcherSig
         let safeSettingsXml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <Settings>
@@ -569,18 +572,45 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
         for mode in ["userdata", "sandbox"] {
             let dir = "\(root)/\(mode)/Documents/Rockstar Games/GTA V"
             let settingsPath = "\(dir)/settings.xml"
+            let settingsURL = URL(fileURLWithPath: settingsPath)
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-            if let data = safeSettingsXml.data(using: .utf8) {
-                try? data.write(to: URL(fileURLWithPath: settingsPath))
-                appendLog("Sanitized GTA V graphics settings to safe baseline (\(mode)).")
+            if !launcherPresetChanged,
+               let existing = try? String(contentsOf: settingsURL, encoding: .utf8),
+               existing.contains("<Settings>") {
+                var sanitized = existing
+                let replacements: [(String, String)] = [
+                    (#"<ShaderQuality\s+value="[^"]*"\s*/>"#, "<ShaderQuality value=\"1\" />"),
+                    (#"<MSAA\s+value="[^"]*"\s*/>"#, "<MSAA value=\"0\" />"),
+                    (#"<MSAAFragments\s+value="[^"]*"\s*/>"#, "<MSAAFragments value=\"0\" />"),
+                    (#"<MSAAPostProcess\s+value="[^"]*"\s*/>"#, "<MSAAPostProcess value=\"0\" />"),
+                    (#"<ReflectionMSAA\s+value="[^"]*"\s*/>"#, "<ReflectionMSAA value=\"0\" />"),
+                    (#"<TXAA\s+value="[^"]*"\s*/>"#, "<TXAA value=\"false\" />"),
+                    (#"<DoF\s+value="[^"]*"\s*/>"#, "<DoF value=\"false\" />"),
+                    (#"<DX_Version\s+value="[^"]*"\s*/>"#, "<DX_Version value=\"2\" />"),
+                    (#"<Tessellation\s+value="[^"]*"\s*/>"#, "<Tessellation value=\"0\" />"),
+                    (#"<Windowed\s+value="[^"]*"\s*/>"#, "<Windowed value=\"2\" />")
+                ]
+                for (pattern, repl) in replacements {
+                    if let regex = try? NSRegularExpression(pattern: pattern) {
+                        sanitized = regex.stringByReplacingMatches(in: sanitized, range: NSRange(sanitized.startIndex..., in: sanitized), withTemplate: repl)
+                    }
+                }
+                if sanitized != existing, let data = sanitized.data(using: .utf8) {
+                    try? data.write(to: settingsURL)
+                }
+                appendLog("Preserved GTA V Pause Menu graphics settings (\(mode)).")
+            } else if let data = safeSettingsXml.data(using: .utf8) {
+                try? data.write(to: settingsURL)
+                appendLog("Applied launcher graphics baseline (\(mode)).")
             }
         }
+        UserDefaults.standard.set(launcherSig, forKey: "lastLauncherSettingsSig")
+
         var effectiveManifest = path
+        let baseManifestURL = URL(fileURLWithPath: path)
+        var dlcData: Data? = nil
         if let data = localData {
             PGSetLocalGameFolder(data.path)
-            let modsDir = ModManagerViewController.modsDirectory
-            let runtimeDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("mod_runtime")
-            var dlcData: Data? = nil
             let looseCandidates = [
                 data.appendingPathComponent("common/data/dlcList.xml"),
                 data.appendingPathComponent("common/data/dlclist.xml")
@@ -605,44 +635,32 @@ final class NativePortViewController: UIViewController, MTKViewDelegate {
                     }
                 }
             }
-            if dlcData == nil {
-                // Baseline dlclist.xml template so Add-on mods can always be registered into paths
-                let baseline = """
-                <?xml version="1.0" encoding="utf-8"?>
-                <Paths>
-                  <Item>platform:\\dlcPacks\\mppatchesng\\</Item>
-                  <Item>platform:\\dlcPacks\\mpchristmas2\\</Item>
-                  <Item>platform:\\dlcPacks\\mpheist\\</Item>
-                  <Item>platform:\\dlcPacks\\patchday1ng\\</Item>
-                  <Item>platform:\\dlcPacks\\patchday2ng\\</Item>
-                  <Item>platform:\\dlcPacks\\patchday3ng\\</Item>
-                </Paths>
-                """
-                dlcData = baseline.data(using: .utf8)
-            }
-
-            if let dlcData {
-                do {
-                    let baseManifestURL = URL(fileURLWithPath: path)
-                    let (overlayManifestURL, catalog) = try ModRuntime.prepare(
-                        baseManifest: baseManifestURL,
-                        mods: modsDir,
-                        runtime: runtimeDir,
-                        dlcList: dlcData
-                    )
-                    effectiveManifest = overlayManifestURL.path
-                    if !catalog.packs.isEmpty {
-                        appendLog("ModRuntime: Đã nạp \(catalog.packs.count) gói DLC mod (\(catalog.vehicleModels.count) xe: \(catalog.vehicleModels.joined(separator: ", "))).")
-                    }
-                    if !catalog.problems.isEmpty {
-                        appendLog("ModRuntime Lưu ý: " + catalog.problems.joined(separator: " | "))
-                    }
-                } catch {
-                    appendLog("ModRuntime Lỗi: \(error.localizedDescription)")
-                }
-            }
         } else {
             PGSetAssetServer(GameSettings.shared.assetServer)
+        }
+        if dlcData == nil {
+            dlcData = ModRuntime.defaultDlcList(from: baseManifestURL)
+        }
+        if let dlcData {
+            let modsDir = ModManagerViewController.modsDirectory
+            let runtimeDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("mod_runtime")
+            do {
+                let (overlayManifestURL, catalog) = try ModRuntime.prepare(
+                    baseManifest: baseManifestURL,
+                    mods: modsDir,
+                    runtime: runtimeDir,
+                    dlcList: dlcData
+                )
+                effectiveManifest = overlayManifestURL.path
+                if overlayManifestURL != baseManifestURL {
+                    appendLog("ModRuntime: Đã nạp \(catalog.packs.count) gói DLC mod (\(catalog.vehicleModels.count) xe: \(catalog.vehicleModels.joined(separator: ", "))).")
+                }
+                if !catalog.problems.isEmpty {
+                    appendLog("ModRuntime Lưu ý: " + catalog.problems.joined(separator: " | "))
+                }
+            } catch {
+                appendLog("ModRuntime Lỗi: \(error.localizedDescription)")
+            }
         }
         AssetPreloader.shared.engineRunning = true
         effectiveManifest.withCString { manifest in

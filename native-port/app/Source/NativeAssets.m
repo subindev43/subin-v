@@ -92,19 +92,51 @@ static BOOL assetBlockInFlight(PGAssetCondition *condition,uint64_t block){
 }
 
 static _Atomic bool assetsConfigured;
-void pg_assets_configure(const char *manifest,const char *root) {
-  // The Settings preloader may configure the same cache before Play; the
-  // engine's later call then reuses it (same manifest and root).
-  if(atomic_exchange(&assetsConfigured,true))return;
+static _Atomic bool preloadStop,preloadExhausted;
+static _Atomic int preloadRunning;
+static NSString *configuredManifestPath;
+static pthread_mutex_t assetsConfigLock=PTHREAD_MUTEX_INITIALIZER;
+static void pg_assets_configure_internal(const char *manifest,const char *root,bool reload) {
+  if(!manifest||!root)return;
+  pthread_mutex_lock(&assetsConfigLock);
   @autoreleasepool {
-    NSData *data=[NSData dataWithContentsOfFile:@(manifest)];
-    NSDictionary *parsed=[NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    assetFiles=parsed[@"files"];
+    NSString *nextManifest=@(manifest);
+    if(atomic_load(&assetsConfigured)){
+      if(!reload||[configuredManifestPath isEqualToString:nextManifest]){
+        pthread_mutex_unlock(&assetsConfigLock);
+        return;
+      }
+      if(atomic_load(&preloadRunning)){
+        atomic_store(&preloadStop,true);
+        for(int wait=0;wait<200&&atomic_load(&preloadRunning);wait++)usleep(10000);
+      }
+    }
+    NSData *data=[NSData dataWithContentsOfFile:nextManifest];
+    NSDictionary *parsed=data?[NSJSONSerialization JSONObjectWithData:data options:0 error:nil]:nil;
+    if(![parsed isKindOfClass:NSDictionary.class]){
+      pg_log("Native asset manifest could not be parsed.");
+      pthread_mutex_unlock(&assetsConfigLock);
+      return;
+    }
+    NSArray *files=parsed[@"files"];
+    NSDictionary<NSString *, NSString *> *overrides=parsed[@"_mugoatOverrides"];
+    NSMutableArray *locks=[NSMutableArray arrayWithCapacity:files.count];
+    for(NSUInteger i=0;i<files.count;i++)[locks addObject:[PGAssetCondition new]];
+    assetFiles=files;
     assetVersion=parsed[@"version"];
-    assetOverrides=parsed[@"_mugoatOverrides"];
-    NSMutableArray *locks=[NSMutableArray arrayWithCapacity:assetFiles.count];
-    for(NSUInteger i=0;i<assetFiles.count;i++)[locks addObject:[PGAssetCondition new]];
+    assetOverrides=overrides;
     assetLocks=locks;
+    configuredManifestPath=nextManifest;
+    bool first=!atomic_exchange(&assetsConfigured,true);
+    if(overrides.count){
+      char line[160];
+      snprintf(line,sizeof line,"Native asset manifest configured with %lu mod overrides (%lu total files).",(unsigned long)overrides.count,(unsigned long)files.count);
+      pg_log(line);
+    }
+    if(!first){
+      pthread_mutex_unlock(&assetsConfigLock);
+      return;
+    }
     cacheRoot=[[@(root) stringByDeletingLastPathComponent] stringByAppendingPathComponent:[@"AssetCache-" stringByAppendingString:parsed[@"version"]?:@"current"]];
     assetConcurrentFills=![NSProcessInfo.processInfo.arguments containsObject:@"--serialized-asset-fills"];
     assetQueuedHints=![NSProcessInfo.processInfo.arguments containsObject:@"--reference-asset-hints"];
@@ -151,7 +183,9 @@ void pg_assets_configure(const char *manifest,const char *root) {
       else {NSString *message=[NSString stringWithFormat:@"Asset server probe HTTP %ld, URL %@, server %@",(long)[(NSHTTPURLResponse *)response statusCode],response.URL,[(NSHTTPURLResponse *)response valueForHTTPHeaderField:@"Server"]];pg_log(message.UTF8String);}
     }] resume];
   }
+  pthread_mutex_unlock(&assetsConfigLock);
 }
+void pg_assets_configure(const char *manifest,const char *root) { pg_assets_configure_internal(manifest,root,true); }
 static NSData *fetchRangeImpl(NSString *path,uint64_t offset,uint64_t length,uint64_t *actualSize) {
   NSString *escaped=[path stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
   NSURL *url=[NSURL URLWithString:[[assetServer stringByAppendingString:@"/data/"] stringByAppendingString:escaped]];
@@ -538,7 +572,7 @@ void w2c_env_wasm_httpfs_io_start_js(struct w2c_env *host,u64 table) {
 
 // MARK: Download all game files (see NativeAssetPreload.h)
 
-void PGAssetCachePrepare(const char *manifestPath,const char *filesRoot){pg_assets_configure(manifestPath,filesRoot);}
+void PGAssetCachePrepare(const char *manifestPath,const char *filesRoot){pg_assets_configure_internal(manifestPath,filesRoot,false);}
 bool PGAssetPreloadSupported(void){
   if(!assetFiles.count||!packedRoot||localDataRoot)return false;
 #if TARGET_OS_SIMULATOR
@@ -603,8 +637,6 @@ static pthread_mutex_t preloadLock=PTHREAD_MUTEX_INITIALIZER;
 static NSArray<NSNumber *> *preloadIDs;
 static NSUInteger preloadCursorFile;
 static uint64_t preloadCursorOffset;
-static _Atomic bool preloadStop,preloadExhausted;
-static _Atomic int preloadRunning;
 static _Atomic unsigned preloadLanes=4;
 static _Atomic uint64_t preloadTotal,preloadCached,preloadDownloaded,preloadReported;
 static _Atomic unsigned preloadConsecutiveFailures;

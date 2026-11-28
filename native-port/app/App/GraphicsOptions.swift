@@ -28,27 +28,11 @@ enum GraphicsPreset: Int, CaseIterable {
          L10n.text("2160p (4K) · chi tiết đồ họa tối đa (Native 4K)")][rawValue]
     }
 
-    /// Engine command-line options. Shader quality never goes below 1 (the
-    /// low shader set is mostly missing), and must not exceed 1 (Quality 2 shaders
-    /// are not compiled for Metal). Tessellation, MSAA and depth of field stay off.
+    /// Engine command-line options. Only shaderQuality is pinned on the CLI (the
+    /// low shader set is mostly missing, and Quality 2 shaders are not compiled for Metal).
+    /// All other graphics values come from settings.xml so Pause Menu > Graphics > Apply Changes works.
     var engineOptions: [String] {
-        switch self {
-        case .battery, .performance:
-            return ["-shaderQuality=1", "-textureQuality=0", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
-                    "-grassQuality=0", "-cityDensity=0", "-lodScale=0", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0", "-vehicleVariety=0"]
-        case .balanced:
-            return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=-1", "-reflectionQuality=0", "-particleQuality=0",
-                    "-grassQuality=0", "-cityDensity=0.1", "-lodScale=0.15", "-pedLodBias=0", "-vehicleLodBias=0", "-pedVariety=0.1", "-vehicleVariety=0.1"]
-        case .quality:
-            return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=0", "-reflectionQuality=1", "-particleQuality=1",
-                    "-grassQuality=1", "-cityDensity=0.4", "-lodScale=0.4", "-pedLodBias=0.2", "-vehicleLodBias=0.2", "-pedVariety=0.4", "-vehicleVariety=0.4"]
-        case .ultra:
-            return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=1", "-reflectionQuality=1", "-particleQuality=1",
-                    "-grassQuality=1", "-cityDensity=0.6", "-lodScale=0.6", "-pedLodBias=0.4", "-vehicleLodBias=0.4", "-pedVariety=0.6", "-vehicleVariety=0.6"]
-        case .max:
-            return ["-shaderQuality=1", "-textureQuality=1", "-shadowQuality=1", "-reflectionQuality=2", "-particleQuality=1",
-                    "-grassQuality=1", "-cityDensity=0.8", "-lodScale=0.8", "-pedLodBias=0.5", "-vehicleLodBias=0.5", "-pedVariety=0.8", "-vehicleVariety=0.8"]
-        }
+        return ["-shaderQuality=1"]
     }
 }
 

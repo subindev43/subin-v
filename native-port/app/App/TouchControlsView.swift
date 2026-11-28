@@ -282,7 +282,7 @@ final class TouchControlsView: UIView {
     private var pressedAt: [UInt32: CFTimeInterval] = [:]
     private var lastHeld = PadButtons()
     private var radioDirection: (Float, Float)?
-    private static let minimumPress: CFTimeInterval = 0.07
+    private static let minimumPress: CFTimeInterval = 0.11
     /// From the engine (PGReadControlHints): which situational buttons apply right now.
     private var hints = PGControlHints()
     private var exitHoldStart: CFTimeInterval?
@@ -841,8 +841,15 @@ final class TouchControlsView: UIView {
             DispatchQueue.main.async { self.onVoiceMicChanged?(enabled) }
         case buyWeapon:
             MugoatTriggerAmmuBuy()
-        case up, down, left, right, accept, back:
+        case up, down, left, right, accept, back, menuApply:
             lastDockInput = now
+            if button === menuApply, context == .menu {
+                pulse(.x, for: 0.14)
+                if PGLastInputDevice() == -4 {
+                    PGSetKey(0x20, true) // VK_SPACE fallback when pause menu is in mouse/keyboard focus
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) { PGSetKey(0x20, false) }
+                }
+            }
         default:
             break
         }
@@ -988,7 +995,6 @@ final class TouchControlsView: UIView {
         }
         aimToggled = false; aim.active = false; leftAim.active = false
         lastPinchDist = nil; mapPinch.reset()
-        if context == .menu { PGSetMousePosition(0, 0, 0) }
         fireStartedAt = nil; exitHoldStart = nil
         enter.setProgress(0)
         sprintSince = nil; moveStick.sprinting = false

@@ -168,7 +168,7 @@ static int64_t heapCeilingBudget(int64_t result){
  double refusedAt;memcpy(&refusedAt,&bits,8);
  struct timespec now;clock_gettime(CLOCK_MONOTONIC,&now);double since=now.tv_sec+now.tv_nsec/1e9-refusedAt;
  if(since<2)return result<-(int64_t)(64ull<<20)?result:-(int64_t)(64ull<<20);
- if(since<30)return result<0?result:0;
+ if(since<5)return result<0?result:0;
  return result;
 }
 uint64_t pg_streaming_resource_memory(uint64_t engineAvailable){
@@ -216,13 +216,22 @@ u64 pg_video_memory(u64 reported){
  uint64_t mb=0;
  const char *configured=getenv("PG_VIDEO_MEMORY_MB");
  if(configured)mb=(uint64_t)atol(configured);
- else if(processLimitMB){
-  uint64_t baseReserve = processLimitMB <= 3200 ? 1700 : processLimitMB <= 4600 ? 1920 : 2048;
-  uint64_t textures = processLimitMB > baseReserve + 512 ? processLimitMB - baseReserve : 512;
-  mb=PGGPUReadsBC()?textures:(PGGPUCompressedTextures()?(textures*85)/100:textures/2);
-  if(mb<640)mb=640;
+ else {
+  uint64_t effectiveLimit = processLimitMB;
+  if (!effectiveLimit) {
+   uint64_t phys = 0; size_t sz = sizeof phys;
+   if (sysctlbyname("hw.memsize", &phys, &sz, NULL, 0) == 0 && phys > 0) effectiveLimit = phys >> 20;
+  }
+  if (effectiveLimit) {
+   uint64_t baseReserve = effectiveLimit <= 3200 ? 1700 : effectiveLimit <= 4600 ? 1850 : 2048;
+   uint64_t textures = effectiveLimit > baseReserve + 512 ? effectiveLimit - baseReserve : 1024;
+   mb=PGGPUReadsBC()?textures:(PGGPUCompressedTextures()?(textures*85)/100:(textures*75)/100);
+   if(mb<1024)mb=1024;
+   if(mb>2047)mb=2047;
+  }
  }
- if(!mb||(mb<<20)>=reported)return reported;
+ if(!mb)mb=1536;
+ if(reported>0&&(mb<<20)>=reported)return reported;
  char line[160];snprintf(line,sizeof line,"Video memory for the engine: %llu MB (memory limit %llu MB, %s).",(unsigned long long)mb,(unsigned long long)processLimitMB,PGGPUReadsBC()?"GPU reads BC textures":(PGGPUCompressedTextures()?"ETC2/EAC compressed textures":"BC textures decoded"));pg_log(line);
  return mb<<20;
 }
@@ -237,7 +246,7 @@ u32 w2c_env_wasm_module_int_js(struct w2c_env *host, u64 address, u32 fallback) 
   const char *key = pg_string(host, address);
   if (!strcmp(key, "lowMemory")) {
     uint64_t limit = PGProcessMemoryLimitMB();
-    return (limit > 0 && limit <= 3600) ? 1 : 0;
+    return (limit > 0 && limit >= 7000) ? 0 : 1;
   }
   return fallback;
 }
