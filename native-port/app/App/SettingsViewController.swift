@@ -179,7 +179,7 @@ final class SettingsViewController: UITableViewController {
                     button.setTitle(resolutionTitle(settings.renderHeight) + " ▾", for: .normal)
                     button.showsMenuAsPrimaryAction = true
                     button.accessibilityLabel = L10n.text("Resolution")
-                    let choices = [0] + GraphicsConfiguration.resolutionChoices
+                    let choices = [0] + GraphicsConfiguration.resolutionChoices.filter { $0 <= settings.tier.maximumRenderHeight }
                     button.menu = UIMenu(children: choices.map { height in
                         UIAction(title: resolutionTitle(height), state: height == settings.renderHeight ? .on : .off) { [weak self] _ in
                             guard let self else { return }
@@ -205,7 +205,7 @@ final class SettingsViewController: UITableViewController {
                     button.setTitle(GameSettings.frameRateTitle(settings.frameRateCap) + " ▾", for: .normal)
                     button.showsMenuAsPrimaryAction = true
                     button.accessibilityLabel = L10n.text("Frame rate")
-                    button.menu = UIMenu(children: [30, 60, 0].map { cap in
+                    button.menu = UIMenu(children: settings.tier.allowedFrameRates.map { cap in
                         UIAction(title: GameSettings.frameRateTitle(cap), state: cap == settings.frameRateCap ? .on : .off) { [weak self] _ in
                             self?.settings.frameRateCap = cap; self?.reloadFooters(); self?.tableView.reloadData()
                         }

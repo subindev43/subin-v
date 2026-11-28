@@ -8,6 +8,17 @@ import os
 enum GraphicsPreset: Int, CaseIterable {
     case battery, performance, balanced, quality, ultra, max
 
+    /// A physical-device policy, not an artistic quality setting. Older phones
+    /// must not expose the same resolution/FPS envelope as ProMotion devices.
+    static func clamped(_ preset: GraphicsPreset, for tier: DeviceTier) -> GraphicsPreset {
+        switch tier.performanceClass {
+        case .legacy: return .battery
+        case .low: return GraphicsPreset(rawValue: min(preset.rawValue, GraphicsPreset.performance.rawValue)) ?? .performance
+        case .mid: return GraphicsPreset(rawValue: min(preset.rawValue, GraphicsPreset.balanced.rawValue)) ?? .balanced
+        case .high: return preset
+        }
+    }
+
     var title: String { [L10n.text("Tiết kiệm pin"), L10n.text("Ưu tiên mượt"), L10n.text("Cân bằng"), L10n.text("Rõ nét"), L10n.text("Cao"), L10n.text("Tối đa (4K)")][rawValue] }
     /// Render height in pixels; width follows the screen's shape.
     var height: Int { [432, 540, 720, 900, 1080, 2160][rawValue] }
@@ -48,6 +59,32 @@ struct DeviceTier {
     let physicalMemoryMB: Int
     let model: String
     let supportsBCTextures: Bool
+
+    enum PerformanceClass { case legacy, low, mid, high }
+    var performanceClass: PerformanceClass {
+        // A11/2 GB-class devices need a hard 30 FPS/low-memory envelope.
+        if physicalMemoryMB <= 3000 || model.hasPrefix("iPhone10") { return .legacy }
+        if physicalMemoryMB <= 4000 { return .low }
+        if physicalMemoryMB <= 6000 { return .mid }
+        return .high
+    }
+
+    var maximumRenderHeight: Int {
+        switch performanceClass {
+        case .legacy: return 540
+        case .low: return 720
+        case .mid: return 1080
+        case .high: return 1440
+        }
+    }
+
+    var allowedFrameRates: [Int] {
+        switch performanceClass {
+        case .legacy: return [30]
+        case .low: return [30, 60]
+        case .mid, .high: return [30, 60, 0]
+        }
+    }
 
     static func probe() -> DeviceTier {
         var info = utsname(); uname(&info)
@@ -116,8 +153,10 @@ enum GraphicsConfiguration {
     /// Pass the chosen settings to the engine. Call before PGStartEngine.
     static func apply(_ settings: GameSettings, screen: CGSize) -> String {
         PGSetEngineMemoryMB(Int32(settings.engineMemoryMB))
-        let preset = settings.graphicsPreset
-        let (width, height) = size(for: preset, renderHeight: settings.renderHeight, screen: screen, matchScreenShape: settings.matchScreenShape)
+        let preset = GraphicsPreset.clamped(settings.graphicsPreset, for: settings.tier)
+        let requestedHeight = settings.renderHeight > 0 ? settings.renderHeight : preset.height
+        let safeHeight = min(requestedHeight, settings.tier.maximumRenderHeight)
+        let (width, height) = size(for: preset, renderHeight: safeHeight, screen: screen, matchScreenShape: settings.matchScreenShape)
         let options = preset.engineOptions
         var pointers = options.map { strdup($0) }
         defer { pointers.forEach { free($0) } }

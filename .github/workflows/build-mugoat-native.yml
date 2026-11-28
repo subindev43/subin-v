@@ -148,6 +148,7 @@ jobs:
           rm -f "$RUNNER_TEMP/mugoat-v2.ipa"
           ./build_ipa.sh --mirror "$RUNNER_TEMP/game-files"
           shasum -a 256 Mugoat-AppleID-Free.ipa Mugoat-Cert-Paid.ipa > SHA256SUMS.txt
+          echo "Build optimizations: C/C++ -O2, Swift -O whole-module" >> "$GITHUB_STEP_SUMMARY"
           codesign --verify --deep --strict app/Build/IPA-Free/Payload/PlayGTA5Native.app
           codesign --verify --deep --strict app/Build/IPA-Paid/Payload/PlayGTA5Native.app
           plutil -lint app/Build/IPA-Free/Payload/PlayGTA5Native.app/Info.plist

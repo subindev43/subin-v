@@ -41,7 +41,9 @@ fi
 xcodebuild -project PlayGTA5Native.xcodeproj -scheme PlayGTA5Native \
   -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
   -derivedDataPath Build/Release -jobs "$JOBS" \
-  GCC_OPTIMIZATION_LEVEL=2 SWIFT_OPTIMIZATION_LEVEL=-O DEBUG_INFORMATION_FORMAT=dwarf \
+  GCC_OPTIMIZATION_LEVEL=2 CLANG_OPTIMIZATION_LEVEL=2 \
+  SWIFT_OPTIMIZATION_LEVEL=-O SWIFT_COMPILATION_MODE=wholemodule \
+  DEBUG_INFORMATION_FORMAT=dwarf \
   CODE_SIGNING_ALLOWED=NO CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS" build > Build/xcodebuild.log 2>&1 || {
   grep -E 'error:' Build/xcodebuild.log | head -20
   echo "Build failed; the full log is app/Build/xcodebuild.log"; exit 1; }

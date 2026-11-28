@@ -13,7 +13,11 @@ settings:
     CLANG_CXX_LANGUAGE_STANDARD: c++20
     CLANG_ENABLE_OBJC_ARC: YES
     OTHER_CPLUSPLUSFLAGS: []
-    GCC_OPTIMIZATION_LEVEL: "0"
+    # Release builds must not inherit the debug-like -O0 default. The generated
+    # engine C and native renderer are frame-critical on A11 and older devices.
+    GCC_OPTIMIZATION_LEVEL: "2"
+    CLANG_OPTIMIZATION_LEVEL: "2"
+    SWIFT_OPTIMIZATION_LEVEL: "-O"
     GCC_PREPROCESSOR_DEFINITIONS:
       - $(inherited)
       - WASM_RT_USE_MMAP=0

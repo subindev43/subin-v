@@ -2294,7 +2294,7 @@ static bool setup() {
 	R->layer.device = R->device;
 	R->layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	R->layer.framebufferOnly = YES;
-	R->layer.maximumDrawableCount = 3;
+	R->layer.maximumDrawableCount = 2;
 	R->queue = [R->device newCommandQueueWithMaxCommandBufferCount:64];
 	R->completion = dispatch_semaphore_create(0);
 	R->float32Filtering = R->device.supports32BitFloatFiltering;
@@ -2393,7 +2393,7 @@ extern "C" void PGStartMetalRenderer(void *memory, uint64_t memorySize, uint64_t
 	pg_log("Connecting game graphics commands to the native Metal renderer.");
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INTERACTIVE, 0);
+	pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INITIATED, 0);
 	pthread_attr_setstacksize(&attr, 8 << 20);
 	pthread_t thread;
 	pthread_create(&thread, &attr, threadMain, nullptr);

@@ -109,9 +109,13 @@ final class GameSettings {
     // Graphics. The default comes from the measured device tier.
     lazy var tier = DeviceTier.probe()
     var graphicsPreset: GraphicsPreset {
-        // integer(forKey:) also reads "-graphicsPreset 4" given as a launch argument (a string).
-        get { defaults.object(forKey: "graphicsPreset") != nil ? GraphicsPreset(rawValue: defaults.integer(forKey: "graphicsPreset")) ?? tier.recommended : tier.recommended }
-        set { defaults.set(newValue.rawValue, forKey: "graphicsPreset") }
+        get {
+            let requested = defaults.object(forKey: "graphicsPreset") != nil
+                ? GraphicsPreset(rawValue: defaults.integer(forKey: "graphicsPreset")) ?? tier.recommended
+                : tier.recommended
+            return GraphicsPreset.clamped(requested, for: tier)
+        }
+        set { defaults.set(GraphicsPreset.clamped(newValue, for: tier).rawValue, forKey: "graphicsPreset") }
     }
     var resolutionScale: Double {
         get { defaults.object(forKey: "resolutionScale") as? Double ?? 1.0 }
@@ -149,11 +153,13 @@ final class GameSettings {
     /// Frame rate cap: 30, 60, or 0 for unlocked (up to the screen's refresh rate, 120 on ProMotion).
     var frameRateCap: Int {
         get {
-            if let cap = defaults.object(forKey: "frameRateCap") as? Int, [0, 30, 60].contains(cap) { return cap }
-            if defaults.object(forKey: "sixtyFPS") != nil { return defaults.bool(forKey: "sixtyFPS") ? 60 : 30 }
-            return tier.physicalMemoryMB >= 5400 ? 60 : 30
+            if let cap = defaults.object(forKey: "frameRateCap") as? Int,
+               tier.allowedFrameRates.contains(cap) { return cap }
+            if tier.performanceClass == .legacy { return 30 }
+            if let old = defaults.object(forKey: "sixtyFPS") as? Bool { return old ? 60 : 30 }
+            return tier.performanceClass == .high ? 60 : 30
         }
-        set { defaults.set(newValue, forKey: "frameRateCap") }
+        set { defaults.set(tier.allowedFrameRates.contains(newValue) ? newValue : 30, forKey: "frameRateCap") }
     }
     static func frameRateTitle(_ cap: Int) -> String { cap == 0 ? L10n.text("Unlocked") : "\(cap) FPS" }
 
