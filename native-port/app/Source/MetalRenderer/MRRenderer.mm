@@ -15,6 +15,12 @@
 #include "NativeFrameRate.h"
 #import <UIKit/UIKit.h>
 #include <TargetConditionals.h>
+#if !TARGET_OS_SIMULATOR && __has_include(<MetalFX/MetalFX.h>)
+#import <MetalFX/MetalFX.h>
+#define PG_HAS_METALFX 1
+#else
+#define PG_HAS_METALFX 0
+#endif
 #include <pthread.h>
 #include <mutex>
 #include <functional>
@@ -230,6 +236,12 @@ struct Renderer {
 	std::mutex captureLock;
 	std::string captureName;
 	std::vector<uint8_t> transcodeScratch;
+#if PG_HAS_METALFX
+	id fxScaler = nil;		// MTLFXSpatialScaler (guarded by @available(iOS 16.0, *))
+	id<MTLTexture> fxOutputTex = nil;
+	uint32_t fxInW = 0, fxInH = 0, fxOutW = 0, fxOutH = 0;
+	MTLPixelFormat fxInFmt = MTLPixelFormatInvalid;
+#endif
 };
 
 static Renderer *R;
@@ -1936,10 +1948,57 @@ static void present(uint32_t texId) {
 		if (!CGSizeEqualToSize(R->layer.drawableSize, size)) R->layer.drawableSize = size;
 		drawable = [R->layer nextDrawable];
 		if (drawable) {
+			bool usedMetalFX = false;
+#if PG_HAS_METALFX
+			if (useUpscale && @available(iOS 16.0, *)) {
+				if ([MTLFXSpatialScalerDescriptor supportsDevice:R->device]) {
+					uint32_t dW = (uint32_t)drawable.texture.width, dH = (uint32_t)drawable.texture.height;
+					if (!R->fxScaler || R->fxInW != t->width || R->fxInH != t->height || R->fxOutW != dW || R->fxOutH != dH || R->fxInFmt != t->format) {
+						MTLFXSpatialScalerDescriptor *fxDesc = [MTLFXSpatialScalerDescriptor new];
+						fxDesc.inputWidth = t->width;
+						fxDesc.inputHeight = t->height;
+						fxDesc.outputWidth = dW;
+						fxDesc.outputHeight = dH;
+						fxDesc.colorTextureFormat = t->format;
+						fxDesc.outputTextureFormat = MTLPixelFormatBGRA8Unorm;
+						fxDesc.colorProcessingMode = MTLFXSpatialScalerColorProcessingModePerceptual;
+						id<MTLFXSpatialScaler> scaler = [fxDesc newSpatialScalerWithDevice:R->device];
+						if (scaler && (t->tex.usage & scaler.colorTextureUsage) == scaler.colorTextureUsage) {
+							MTLTextureDescriptor *outDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:dW height:dH mipmapped:NO];
+							outDesc.storageMode = MTLStorageModePrivate;
+							outDesc.usage = scaler.outputTextureUsage | MTLTextureUsageShaderRead;
+							id<MTLTexture> outTex = [R->device newTextureWithDescriptor:outDesc];
+							if (outTex) {
+								R->fxScaler = scaler;
+								R->fxOutputTex = outTex;
+								R->fxInW = t->width; R->fxInH = t->height;
+								R->fxOutW = dW; R->fxOutH = dH;
+								R->fxInFmt = t->format;
+								logOnce("metalfx-active", "Metal renderer: Apple MetalFX Spatial upscaler active (%ux%u -> %ux%u)", t->width, t->height, dW, dH);
+							}
+						}
+					}
+					if (R->fxScaler && R->fxOutputTex) {
+						id<MTLFXSpatialScaler> activeScaler = (id<MTLFXSpatialScaler>)R->fxScaler;
+						activeScaler.colorTexture = t->tex;
+						activeScaler.outputTexture = R->fxOutputTex;
+						activeScaler.inputContentWidth = t->width;
+						activeScaler.inputContentHeight = t->height;
+						[activeScaler encodeToCommandBuffer:commandBuffer()];
+						usedMetalFX = true;
+					}
+				}
+			}
+#endif
 			MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
 			rp.colorAttachments[0].texture = drawable.texture; rp.colorAttachments[0].loadAction = MTLLoadActionDontCare; rp.colorAttachments[0].storeAction = MTLStoreActionStore;
 			id<MTLRenderCommandEncoder> e = [commandBuffer() renderCommandEncoderWithDescriptor:rp];
-			if (useUpscale) {
+			if (usedMetalFX) {
+				[e setRenderPipelineState:R->blitPipe];
+#if PG_HAS_METALFX
+				[e setFragmentTexture:R->fxOutputTex atIndex:0];
+#endif
+			} else if (useUpscale) {
 				UpscaleParams params;
 				params.inSize[0] = (float)t->width; params.inSize[1] = (float)t->height;
 				params.outSize[0] = (float)drawable.texture.width; params.outSize[1] = (float)drawable.texture.height;

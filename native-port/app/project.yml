@@ -69,6 +69,8 @@ targets:
     dependencies:
       - sdk: QuartzCore.framework
       - sdk: Metal.framework
+      - sdk: MetalFX.framework
+        weak: true
       - sdk: IOSurface.framework
       - sdk: UIKit.framework
       - sdk: MetalKit.framework
